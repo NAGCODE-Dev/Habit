@@ -1,0 +1,13 @@
+{
+  "name": "habit-athlete-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Checklist diario pessoal com treino, agua, sono e historico local.",
+  "scripts": {
+    "generate:assets": "node ./scripts/generate-assets.mjs",
+    "build": "node ./scripts/build.mjs",
+    "preview": "node ./scripts/preview.mjs dist 4173",
+    "dev": "node ./scripts/preview.mjs . 4173"
+  }
+}
