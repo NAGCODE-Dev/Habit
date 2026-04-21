@@ -98,8 +98,8 @@ function renderRecentList(entries) {
     <section class="recent-history-card">
       <div class="history-topline">
         <div>
-          <p class="eyebrow">Detalhe rapido</p>
-          <h2>Ultimos registros</h2>
+          <p class="eyebrow">Detalhe rápido</p>
+          <h2>Últimos registros</h2>
         </div>
       </div>
       <div class="recent-history-list">
@@ -127,8 +127,8 @@ export function renderHistoryView(history, currentEntry) {
   if (!mergedEntries.length) {
     return `
       <section class="empty-state">
-        <h2>Historico vazio</h2>
-        <p>Os dias vao aparecer aqui em formato de calendario conforme o app for salvando o fechamento diario.</p>
+        <h2>Histórico vazio</h2>
+        <p>Os dias vão aparecer aqui em formato de calendário conforme o app for salvando o fechamento diário.</p>
       </section>
     `;
   }
@@ -140,10 +140,10 @@ export function renderHistoryView(history, currentEntry) {
     <section class="history-layout">
       <section class="history-overview-card">
         <div>
-          <p class="eyebrow">Historico</p>
-          <h2>Calendario</h2>
+          <p class="eyebrow">Histórico</p>
+          <h2>Calendário</h2>
         </div>
-        <p class="support-copy">Cada dia fica com uma cor pela porcentagem concluida.</p>
+        <p class="support-copy">Cada dia fica com uma cor pela porcentagem concluída.</p>
         <div class="calendar-legend">
           <span class="legend-item"><i class="legend-swatch level-red"></i> vermelho: abaixo de 30%</span>
           <span class="legend-item"><i class="legend-swatch level-orange"></i> laranja: 30% a 49%</span>

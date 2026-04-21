@@ -33,14 +33,14 @@ export function renderProgressHeader({
           <strong>${completed}/${total}</strong>
         </div>
         <div class="metric-card water">
-          <span class="metric-label">Agua</span>
+          <span class="metric-label">Água</span>
           <strong>${waterTotalMl}/${WATER_GOAL_ML} ml</strong>
         </div>
       </div>
 
       <div class="hero-actions">
         <button class="tab-button ${activeView === "today" ? "is-active" : ""}" type="button" data-action="switch-view" data-view="today">Hoje</button>
-        <button class="tab-button ${activeView === "history" ? "is-active" : ""}" type="button" data-action="switch-view" data-view="history">Historico</button>
+        <button class="tab-button ${activeView === "history" ? "is-active" : ""}" type="button" data-action="switch-view" data-view="history">Histórico</button>
         ${
           installAvailable
             ? '<button class="ghost-button" type="button" data-action="install-app">Tela inicial</button>'
