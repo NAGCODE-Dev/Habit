@@ -50,7 +50,8 @@ export function shouldSilenceBackgroundSyncError(error) {
   const name = String(error?.name ?? "");
   const message = String(error?.message ?? "");
   return name === "NotAllowedError"
-    || message.includes("NotAllowedError");
+    || message.includes("NotAllowedError")
+    || message.includes("Permission denied");
 }
 
 export async function showServiceWorkerNotification(title, body, tag) {
