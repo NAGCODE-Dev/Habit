@@ -43,9 +43,6 @@ import {
 } from "./services/dayService.js";
 import { computeProgress, summarizeDay } from "./services/historyService.js";
 import { getDashboardAnalytics, refreshAnalyticsCache } from "./services/analyticsService.js";
-import { fetchGoogleFitDailySummary } from "./services/googleFitService.js";
-import { updateGoogleFitTelemetry } from "./services/telemetryService.js";
-import { buildUnifiedHealthModel } from "./services/healthModelService.js";
 import { loadState, saveState } from "./services/storageService.js";
 
 function mealRow(meal, checked, timeValue) {
@@ -316,52 +313,11 @@ export class HabitApp {
       return;
     }
 
-    if (action === "sync-google-fit") {
-      await this.syncGoogleFit();
-      return;
-    }
-
     if (action === "install-app" && this.beforeInstallEvent) {
       await this.beforeInstallEvent.prompt();
       this.beforeInstallEvent = null;
       this.render();
     }
-  }
-
-  async syncGoogleFit() {
-    const token = window.prompt("Cole o access token OAuth do Google Fit para importar os dados do dia:");
-    if (!token) {
-      return;
-    }
-
-    try {
-      const summary = await fetchGoogleFitDailySummary(token, this.state.currentDayKey);
-      const nextState = updateGoogleFitTelemetry(this.state, this.state.currentDayKey, summary);
-      await this.persistState(nextState);
-      this.addToast("Telemetria do Google Fit atualizada (sem alterar seu histórico manual).");
-    } catch (error) {
-      console.error("Falha ao importar Google Fit", error);
-      this.addToast("Não foi possível importar do Google Fit. Confira o token e permissões.", "warning");
-    }
-  }
-
-  renderGoogleFitCard() {
-    const model = buildUnifiedHealthModel(this.state, this.state.currentDayKey);
-    const telemetry = model.telemetry;
-    return `
-      <section class="summary-card">
-        <div class="summary-line">
-          <span>Google Fit</span>
-          <strong>Importação diária</strong>
-        </div>
-        <p class="support-copy">Telemetria externa separada do seu histórico manual (event store imutável).</p>
-        <div class="summary-line"><span>Passos</span><strong>${telemetry.steps}</strong></div>
-        <div class="summary-line"><span>Minutos ativos</span><strong>${telemetry.activeMinutes}</strong></div>
-        <div class="summary-line"><span>Hidratação (Fit)</span><strong>${formatMl(telemetry.hydrationMl)}</strong></div>
-        <p class="tiny-copy">${escapeHtml(model.insights.activityInsight)}</p>
-        <button type="button" class="action-button accent" data-action="sync-google-fit">Sincronizar Google Fit</button>
-      </section>
-    `;
   }
 
   async handleChange(event) {
@@ -657,7 +613,6 @@ export class HabitApp {
         currentSummary
       })}
       ${renderWaterTracker(day)}
-      ${this.renderGoogleFitCard()}
 
       <section class="summary-card">
         <div class="summary-line">

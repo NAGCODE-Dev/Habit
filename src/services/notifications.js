@@ -38,10 +38,19 @@ export async function registerBackgroundReminderSync() {
       return { supported: true, mode: "periodicSync" };
     }
   } catch (error) {
-    console.warn("Background reminder sync unavailable", error);
+    if (!shouldSilenceBackgroundSyncError(error)) {
+      console.warn("Background reminder sync unavailable", error);
+    }
   }
 
   return { supported: false, mode: "foreground-only" };
+}
+
+export function shouldSilenceBackgroundSyncError(error) {
+  const name = String(error?.name ?? "");
+  const message = String(error?.message ?? "");
+  return name === "NotAllowedError"
+    || message.includes("NotAllowedError");
 }
 
 export async function showServiceWorkerNotification(title, body, tag) {
