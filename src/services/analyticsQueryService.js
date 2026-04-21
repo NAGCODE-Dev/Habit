@@ -53,13 +53,15 @@ function looksLikeEmptyDay(day) {
     return true;
   }
 
-  const summary = day.historySummary;
+  const hasCompletedHabits = Object.entries(day.habits ?? {})
+    .some(([key, value]) => key !== "runSkipped" && Boolean(value));
+
   return day.water?.total === 0
+    && (day.water?.logs?.length ?? 0) === 0
     && !day.sleep?.actual?.sleep
     && !day.sleep?.actual?.wake
-    && day.habits?.runSkipped === false
-    && summary?.completed === 0
-    && summary?.percentage === 0;
+    && !hasCompletedHabits
+    && day.habits?.runSkipped === false;
 }
 
 export function getDailyEvents(state, dateKey) {
@@ -123,7 +125,7 @@ export function getAllDays(state) {
       })
       : reduceEvents(events, dateKey);
 
-    if (historyEntry && looksLikeEmptyDay(reducedDay)) {
+    if (historyEntry && (events.length === 0 || looksLikeEmptyDay(reducedDay))) {
       return applyHistorySummary(reducedDay, historyEntry);
     }
 
