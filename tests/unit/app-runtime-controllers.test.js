@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import FDBFactory from "fake-indexeddb/lib/FDBFactory";
 import { handleChangeAction, handleInputAction } from "../../src/app/action-handlers.js";
 import { createAppRuntime } from "../../src/app/createAppRuntime.js";
 import { createReminderController } from "../../src/app/createReminderController.js";
@@ -239,6 +240,119 @@ test("training-notes usa o caminho único de persistência com debounce e flush 
       scheduleAnalytics: false
     }
   ]);
+});
+
+test("createAppRuntime ignora mount duplicado e não duplica listeners globais", async () => {
+  const originalWindow = /** @type {any} */ (globalThis.window);
+  const originalDocument = /** @type {any} */ (globalThis.document);
+  const originalIndexedDB = /** @type {any} */ (globalThis.indexedDB);
+  const rootAdds = new Map();
+  const rootRemoves = new Map();
+  const windowAdds = new Map();
+  const windowRemoves = new Map();
+  const documentAdds = new Map();
+  const documentRemoves = new Map();
+  let nextTimerId = 1;
+
+  const count = (bucket, type) => {
+    bucket.set(type, (bucket.get(type) ?? 0) + 1);
+  };
+
+  const windowStub = /** @type {any} */ ({
+    addEventListener(type) {
+      count(windowAdds, type);
+    },
+    removeEventListener(type) {
+      count(windowRemoves, type);
+    },
+    clearTimeout() {},
+    clearInterval() {},
+    setTimeout() {
+      return nextTimerId++;
+    },
+    setInterval() {
+      return nextTimerId++;
+    },
+    location: {
+      href: "http://127.0.0.1:4173/"
+    },
+    history: {
+      replaceState() {}
+    }
+  });
+  const documentStub = /** @type {any} */ ({
+    hidden: false,
+    visibilityState: "visible",
+    addEventListener(type) {
+      count(documentAdds, type);
+    },
+    removeEventListener(type) {
+      count(documentRemoves, type);
+    }
+  });
+  const root = /** @type {any} */ ({
+    innerHTML: "",
+    addEventListener(type) {
+      count(rootAdds, type);
+    },
+    removeEventListener(type) {
+      count(rootRemoves, type);
+    }
+  });
+
+  try {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      writable: true,
+      value: windowStub
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      writable: true,
+      value: documentStub
+    });
+    globalThis.indexedDB = new FDBFactory();
+
+    const runtime = createAppRuntime(root);
+    await runtime.mount();
+    await runtime.mount();
+
+    assert.equal(rootAdds.get("click"), 1);
+    assert.equal(rootAdds.get("change"), 1);
+    assert.equal(rootAdds.get("input"), 1);
+    assert.equal(windowAdds.get("beforeinstallprompt"), 1);
+    assert.equal(windowAdds.get("popstate"), 1);
+    assert.equal(windowAdds.get("pagehide"), 1);
+    assert.equal(windowAdds.get("focus"), 1);
+    assert.equal(documentAdds.get("visibilitychange"), 1);
+
+    runtime.destroy();
+
+    assert.equal(rootRemoves.get("click"), 1);
+    assert.equal(rootRemoves.get("change"), 1);
+    assert.equal(rootRemoves.get("input"), 1);
+    assert.equal(windowRemoves.get("beforeinstallprompt"), 1);
+    assert.equal(windowRemoves.get("popstate"), 1);
+    assert.equal(windowRemoves.get("pagehide"), 1);
+    assert.equal(windowRemoves.get("focus"), 1);
+    assert.equal(documentRemoves.get("visibilitychange"), 1);
+  } finally {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      writable: true,
+      value: originalWindow
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      writable: true,
+      value: originalDocument
+    });
+    if (typeof originalIndexedDB === "undefined") {
+      delete globalThis.indexedDB;
+    } else {
+      globalThis.indexedDB = originalIndexedDB;
+    }
+  }
 });
 
 test("createAppRuntime remove listeners do root e da window no destroy", () => {

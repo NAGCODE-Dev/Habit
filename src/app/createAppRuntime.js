@@ -22,6 +22,9 @@ export function createAppRuntime(rootElement) {
     beforeInstallEvent: null,
     reminderMode: "foreground-only",
     isRendering: false,
+    isMounted: false,
+    listenersAttached: false,
+    mountPromise: null,
     stopResetWatcher: null,
     handleRootClick: null,
     handleRootChange: null,
@@ -81,7 +84,36 @@ export function createAppRuntime(rootElement) {
     void runtime.flushPendingState();
   };
 
+  function detachGlobalListeners() {
+    if (!runtime.listenersAttached) {
+      return;
+    }
+
+    window.removeEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
+    window.removeEventListener("popstate", runtime.handlePopState);
+    window.removeEventListener("pagehide", runtime.handlePageHide);
+
+    if (runtime.handleRootClick) {
+      runtime.root.removeEventListener("click", runtime.handleRootClick);
+      runtime.handleRootClick = null;
+    }
+    if (runtime.handleRootChange) {
+      runtime.root.removeEventListener("change", runtime.handleRootChange);
+      runtime.handleRootChange = null;
+    }
+    if (runtime.handleRootInput) {
+      runtime.root.removeEventListener("input", runtime.handleRootInput);
+      runtime.handleRootInput = null;
+    }
+
+    runtime.listenersAttached = false;
+  }
+
   runtime.attachGlobalListeners = () => {
+    if (runtime.listenersAttached) {
+      return;
+    }
+
     runtime.handleRootClick = (event) => {
       const actionElement = event.target instanceof Element
         ? event.target.closest("[data-action]")
@@ -119,6 +151,7 @@ export function createAppRuntime(rootElement) {
     window.addEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
     window.addEventListener("popstate", runtime.handlePopState);
     window.addEventListener("pagehide", runtime.handlePageHide);
+    runtime.listenersAttached = true;
   };
 
   runtime.render = () => {
@@ -147,18 +180,48 @@ export function createAppRuntime(rootElement) {
   };
 
   runtime.mount = async () => {
-    viewController.setActiveView(viewController.getInitialView(), { syncUrl: false });
-    runtime.attachGlobalListeners();
-    await stateController.bootstrap();
+    if (runtime.isMounted) {
+      return;
+    }
 
-    runtime.stopResetWatcher = startDailyResetWatcher(() => {
-      void runtime.ensureCurrentDay();
-    });
-    void runtime.configureNotifications();
-    reminderController.start();
+    if (runtime.mountPromise) {
+      return runtime.mountPromise;
+    }
+
+    runtime.mountPromise = (async () => {
+      try {
+        viewController.setActiveView(viewController.getInitialView(), { syncUrl: false });
+        runtime.attachGlobalListeners();
+        await stateController.bootstrap();
+
+        if (runtime.stopResetWatcher) {
+          runtime.stopResetWatcher();
+        }
+        runtime.stopResetWatcher = startDailyResetWatcher(() => {
+          void runtime.ensureCurrentDay();
+        });
+        void runtime.configureNotifications();
+        reminderController.start();
+        runtime.isMounted = true;
+      } catch (error) {
+        reminderController.destroy();
+        if (runtime.stopResetWatcher) {
+          runtime.stopResetWatcher();
+          runtime.stopResetWatcher = null;
+        }
+        detachGlobalListeners();
+        throw error;
+      } finally {
+        runtime.mountPromise = null;
+      }
+    })();
+
+    return runtime.mountPromise;
   };
 
   runtime.destroy = () => {
+    runtime.isMounted = false;
+    runtime.mountPromise = null;
     void runtime.flushPendingState();
     reminderController.destroy();
     stateController.destroy();
@@ -169,22 +232,7 @@ export function createAppRuntime(rootElement) {
       runtime.stopResetWatcher = null;
     }
 
-    window.removeEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
-    window.removeEventListener("popstate", runtime.handlePopState);
-    window.removeEventListener("pagehide", runtime.handlePageHide);
-
-    if (runtime.handleRootClick) {
-      runtime.root.removeEventListener("click", runtime.handleRootClick);
-      runtime.handleRootClick = null;
-    }
-    if (runtime.handleRootChange) {
-      runtime.root.removeEventListener("change", runtime.handleRootChange);
-      runtime.handleRootChange = null;
-    }
-    if (runtime.handleRootInput) {
-      runtime.root.removeEventListener("input", runtime.handleRootInput);
-      runtime.handleRootInput = null;
-    }
+    detachGlobalListeners();
   };
 
   return runtime;

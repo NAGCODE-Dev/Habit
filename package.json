@@ -14,7 +14,7 @@
     "test:artifact": "node --test tests/artifact/*.test.js",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test": "npm run test:fast && npm run test:artifact && npm run test:e2e"
+    "test": "npm run typecheck && npm run test:fast && npm run test:artifact && npm run test:e2e"
   },
   "devDependencies": {
     "@types/node": "^24.9.1",

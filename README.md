@@ -85,6 +85,8 @@ Fluxo:
 
 ## Validacao local
 
+- `npm run typecheck`
+- `npm test`
 - `npm run build`
 - preview local em `http://localhost:4173`
 - captura visual da tela principal e do historico
