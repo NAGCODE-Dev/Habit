@@ -8,6 +8,60 @@ function sortEvents(events) {
   return [...events].sort((a, b) => a.timestamp - b.timestamp || String(a.id).localeCompare(String(b.id)));
 }
 
+function applyHistorySummary(day, historyEntry) {
+  const nextDay = day ? createSafeDayTemplate(day.date) : createSafeDayTemplate(historyEntry.dateKey);
+
+  if (day) {
+    nextDay.tasks = { ...nextDay.tasks, ...day.tasks };
+    nextDay.habits = { ...nextDay.habits, ...day.habits };
+    nextDay.sleep = {
+      ...nextDay.sleep,
+      ...day.sleep,
+      onTime: { ...nextDay.sleep.onTime, ...(day.sleep?.onTime ?? {}) },
+      actual: { ...nextDay.sleep.actual, ...(day.sleep?.actual ?? {}) }
+    };
+    nextDay.workout = {
+      ...nextDay.workout,
+      ...day.workout,
+      completed: { ...nextDay.workout.completed, ...(day.workout?.completed ?? {}) }
+    };
+    nextDay.school = {
+      ...nextDay.school,
+      ...day.school,
+      checklist: { ...nextDay.school.checklist, ...(day.school?.checklist ?? {}) }
+    };
+    nextDay.water = { ...nextDay.water, ...(day.water ?? {}) };
+    nextDay.meta = { ...nextDay.meta, ...(day.meta ?? {}) };
+  }
+
+  nextDay.water.total = Math.max(0, Math.round(Number(historyEntry.waterTotalMl ?? 0)));
+  nextDay.sleep.actual.sleep = typeof historyEntry.sleepActual === "string" ? historyEntry.sleepActual : "";
+  nextDay.sleep.actual.wake = typeof historyEntry.wakeActual === "string" ? historyEntry.wakeActual : "";
+  nextDay.habits.runSkipped = Boolean(historyEntry.runSkipped);
+  nextDay.historySummary = {
+    completed: Math.max(0, Math.round(Number(historyEntry.completed ?? 0))),
+    total: Math.max(1, Math.round(Number(historyEntry.total ?? 1))),
+    percentage: Math.max(0, Math.round(Number(historyEntry.percentage ?? 0))),
+    waterGoalMet: Boolean(historyEntry.waterGoalMet)
+  };
+
+  return nextDay;
+}
+
+function looksLikeEmptyDay(day) {
+  if (!day) {
+    return true;
+  }
+
+  const summary = day.historySummary;
+  return day.water?.total === 0
+    && !day.sleep?.actual?.sleep
+    && !day.sleep?.actual?.wake
+    && day.habits?.runSkipped === false
+    && summary?.completed === 0
+    && summary?.percentage === 0;
+}
+
 export function getDailyEvents(state, dateKey) {
   const active = getEventsByDate(state.events ?? [], dateKey);
   const archived = Array.isArray(state.eventArchive?.[dateKey]) ? state.eventArchive[dateKey] : [];
@@ -57,26 +111,22 @@ export function getAllDays(state) {
     const historyEntry = historyByDate.get(dateKey);
     const snapshot = getSnapshot(state, dateKey);
     const events = getDailyEvents(state, dateKey);
-    if (snapshot) {
-      return reduceEvents(events, dateKey, {
+
+    if (historyEntry && !snapshot && events.length === 0) {
+      return applyHistorySummary(createSafeDayTemplate(dateKey), historyEntry);
+    }
+
+    const reducedDay = snapshot
+      ? reduceEvents(events, dateKey, {
         baseDay: snapshot.state,
         startAfterEventId: snapshot.lastEventId
-      });
+      })
+      : reduceEvents(events, dateKey);
+
+    if (historyEntry && looksLikeEmptyDay(reducedDay)) {
+      return applyHistorySummary(reducedDay, historyEntry);
     }
-    if (historyEntry && events.length === 0) {
-      const day = createSafeDayTemplate(dateKey);
-      day.water.total = Math.max(0, Math.round(Number(historyEntry.waterTotalMl ?? 0)));
-      day.sleep.actual.sleep = typeof historyEntry.sleepActual === "string" ? historyEntry.sleepActual : "";
-      day.sleep.actual.wake = typeof historyEntry.wakeActual === "string" ? historyEntry.wakeActual : "";
-      day.habits.runSkipped = Boolean(historyEntry.runSkipped);
-      day.historySummary = {
-        completed: Math.max(0, Math.round(Number(historyEntry.completed ?? 0))),
-        total: Math.max(1, Math.round(Number(historyEntry.total ?? 1))),
-        percentage: Math.max(0, Math.round(Number(historyEntry.percentage ?? 0))),
-        waterGoalMet: Boolean(historyEntry.waterGoalMet)
-      };
-      return day;
-    }
-    return reduceEvents(events, dateKey);
+
+    return reducedDay;
   });
 }
