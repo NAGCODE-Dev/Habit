@@ -4,6 +4,7 @@ import {
   countRunSkipsInLastWeek,
   rotateHistoryToDate
 } from "./historyService.js";
+import { DEFAULT_SECTION_OPEN, MEAL_FIELDS } from "./constants.js";
 import {
   createSafeDayTemplate,
   repairDatabase,
@@ -14,8 +15,21 @@ import { EVENT_TYPES } from "./eventService.js";
 import { buildEventIndex } from "./eventStore.js";
 import { compactDate, reconstructDayWithSnapshot } from "./snapshotService.js";
 
+const VALID_SECTION_IDS = new Set(Object.keys(DEFAULT_SECTION_OPEN));
+const VALID_MEAL_IDS = new Set(MEAL_FIELDS.map((meal) => meal.id));
+const TIME_VALUE_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function isValidHabitId(state, habitId) {
+  return typeof habitId === "string" && Object.hasOwn(state.day.habits, habitId);
+}
+
+function sanitizeTimeValue(value) {
+  const time = String(value ?? "").trim();
+  return TIME_VALUE_PATTERN.test(time) ? time : "";
 }
 
 export function createDefaultDay(dateKey) {
@@ -75,12 +89,18 @@ export function getLegacyDaySnapshot(day) {
 
 export function toggleSection(state, sectionId) {
   const next = clone(state);
+  if (!VALID_SECTION_IDS.has(sectionId)) {
+    return next;
+  }
   next.sectionsOpen[sectionId] = !next.sectionsOpen[sectionId];
   return next;
 }
 
 export function updateHabit(state, habitId, checked) {
   const next = withProgress(normalizeAppState(state));
+  if (!isValidHabitId(next, habitId)) {
+    return { state: next };
+  }
 
   if (habitId === "runSkipped" && checked) {
     const historySkips = countRunSkipsInLastWeek(next, next.currentDayKey);
@@ -102,10 +122,13 @@ export function updateHabit(state, habitId, checked) {
 
 export function updateSleepTime(state, field, value) {
   const next = withProgress(normalizeAppState(state));
+  if (field !== "sleepActual" && field !== "wakeActual") {
+    return next;
+  }
   next.events = appendEvent(next.events, {
     date: next.currentDayKey,
     type: EVENT_TYPES.SLEEP_TIME_SET,
-    payload: { field, value }
+    payload: { field, value: sanitizeTimeValue(value) }
   });
   next.eventIndex = buildEventIndex(next.events);
   next.day = reconstructDayWithSnapshot(next, next.currentDayKey);
@@ -114,10 +137,13 @@ export function updateSleepTime(state, field, value) {
 
 export function updateMealTime(state, mealId, value) {
   const next = withProgress(normalizeAppState(state));
+  if (!VALID_MEAL_IDS.has(mealId)) {
+    return next;
+  }
   next.events = appendEvent(next.events, {
     date: next.currentDayKey,
     type: EVENT_TYPES.MEAL_TIME_SET,
-    payload: { mealId, value }
+    payload: { mealId, value: sanitizeTimeValue(value) }
   });
   next.eventIndex = buildEventIndex(next.events);
   next.day = reconstructDayWithSnapshot(next, next.currentDayKey);
@@ -139,7 +165,7 @@ export function updateTrainingNotes(state, value) {
 
 export function addWater(state, amount) {
   const value = Number(amount);
-  if (!Number.isFinite(value) || value <= 0) {
+  if (!Number.isFinite(value) || value <= 0 || value > 5000) {
     return normalizeAppState(state);
   }
 
