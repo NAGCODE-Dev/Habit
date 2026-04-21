@@ -1,4 +1,10 @@
 import { createSafeDayTemplate, validateDay } from "./integrityService.js";
+import {
+  isValidHabitId,
+  isValidMealId,
+  sanitizeTimeValue,
+  sanitizeWaterAmount
+} from "./domainGuards.js";
 
 export const EVENT_TYPES = {
   SNAPSHOT_SEEDED: "SNAPSHOT_SEEDED",
@@ -44,14 +50,20 @@ export function reduceEvents(events, dateKey, { baseDay = null, startAfterEventI
         day.school = snapshot.school;
         break;
       }
-      case EVENT_TYPES.WATER_ADDED:
+      case EVENT_TYPES.WATER_ADDED: {
+        const safeAmount = sanitizeWaterAmount(event.payload?.amount);
+        if (safeAmount === null) {
+          break;
+        }
+
         day.water.logs.push({
           id: String(event.payload?.id ?? `water_${event.timestamp}`),
-          amount: Math.max(0, Math.round(Number(event.payload?.amount ?? 0))),
+          amount: safeAmount,
           timestamp: new Date(event.timestamp).toISOString()
         });
-        day.water.total += Math.max(0, Math.round(Number(event.payload?.amount ?? 0)));
+        day.water.total += safeAmount;
         break;
+      }
       case EVENT_TYPES.WATER_UNDONE: {
         const lastEntry = day.water.logs.pop();
         if (lastEntry) {
@@ -61,7 +73,7 @@ export function reduceEvents(events, dateKey, { baseDay = null, startAfterEventI
       }
       case EVENT_TYPES.HABIT_SET: {
         const key = event.payload?.habitId;
-        if (typeof key === "string" && Object.hasOwn(day.habits, key)) {
+        if (isValidHabitId(day, key)) {
           day.habits[key] = Boolean(event.payload?.checked);
           if (key === "runDone" && day.habits.runDone) {
             day.habits.runSkipped = false;
@@ -75,17 +87,17 @@ export function reduceEvents(events, dateKey, { baseDay = null, startAfterEventI
       case EVENT_TYPES.SLEEP_TIME_SET: {
         const field = event.payload?.field;
         if (field === "sleepActual") {
-          day.sleep.actual.sleep = String(event.payload?.value ?? "");
+          day.sleep.actual.sleep = sanitizeTimeValue(event.payload?.value);
         }
         if (field === "wakeActual") {
-          day.sleep.actual.wake = String(event.payload?.value ?? "");
+          day.sleep.actual.wake = sanitizeTimeValue(event.payload?.value);
         }
         break;
       }
       case EVENT_TYPES.MEAL_TIME_SET: {
         const key = event.payload?.mealId;
-        if (typeof key === "string" && Object.hasOwn(day.meals, key)) {
-          day.meals[key] = String(event.payload?.value ?? "");
+        if (isValidMealId(key)) {
+          day.meals[key] = sanitizeTimeValue(event.payload?.value);
         }
         break;
       }

@@ -175,6 +175,34 @@ function sanitizeAnalyticsCache(rawCache) {
   };
 }
 
+function sanitizeTelemetryShadow(rawTelemetry) {
+  if (!isPlainObject(rawTelemetry)) {
+    return { googleFit: {} };
+  }
+
+  const rawGoogleFit = isPlainObject(rawTelemetry.googleFit) ? rawTelemetry.googleFit : {};
+  const googleFit = {};
+  for (const [dateKey, item] of Object.entries(rawGoogleFit)) {
+    const safeDate = toDateKey(dateKey, "");
+    if (!safeDate || !isPlainObject(item)) {
+      continue;
+    }
+
+    googleFit[safeDate] = {
+      source: "google-fit",
+      steps: Math.max(0, Math.round(safeNumber(item.steps, 0))),
+      calories: Math.max(0, Math.round(safeNumber(item.calories, 0))),
+      hydrationMl: Math.max(0, Math.round(safeNumber(item.hydrationMl, 0))),
+      activeMinutes: Math.max(0, Math.round(safeNumber(item.activeMinutes, 0))),
+      sleepStart: typeof item.sleepStart === "string" ? item.sleepStart : "",
+      wakeTime: typeof item.wakeTime === "string" ? item.wakeTime : "",
+      updatedAt: Math.max(0, Math.floor(safeNumber(item.updatedAt, Date.now())))
+    };
+  }
+
+  return { googleFit };
+}
+
 export function createSafeDayTemplate(dateKey) {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -541,6 +569,7 @@ export function repairDatabase(rawState, todayKey = getLocalDateKey()) {
       reminderPromptDismissed: Boolean(migrated.preferences?.reminderPromptDismissed)
     },
     analyticsCache: sanitizeAnalyticsCache(migrated.analyticsCache),
+    telemetryShadow: sanitizeTelemetryShadow(migrated.telemetryShadow),
     day: validateDay(migrated.day, toDateKey(migrated.currentDayKey, todayKey)),
     events: deduplicateEvents((Array.isArray(migrated.events) ? migrated.events : [])
       .map((event) => sanitizeEvent(event, toDateKey(migrated.currentDayKey, todayKey)))
