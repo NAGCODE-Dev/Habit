@@ -58,7 +58,7 @@ function mealRow(meal, checked, timeValue) {
         hint: meal.range
       })}
       <div class="inline-time-row">
-        <span class="mini-label">Horario real</span>
+        <span class="mini-label">Horário real</span>
         <input
           class="time-input compact"
           type="time"
@@ -222,7 +222,7 @@ export class HabitApp {
       const nextState = markReminderSent(this.state, dueHour);
       await this.persistState(nextState, { render: true });
 
-      const title = `Agua ${String(dueHour).padStart(2, "0")}:00`;
+      const title = `Água ${String(dueHour).padStart(2, "0")}:00`;
       const body = buildWaterReminderBody(this.state.day.water.total);
 
       if (document.visibilityState === "visible") {
@@ -296,11 +296,11 @@ export class HabitApp {
     if (action === "request-notifications") {
       const permission = await requestNotificationPermission();
       if (permission === "granted") {
-        this.addToast("Lembretes de agua ativados.");
+        this.addToast("Lembretes de água ativados.");
         const result = await registerBackgroundReminderSync();
         this.reminderMode = result.mode;
       } else if (permission === "denied") {
-        this.addToast("Notificacoes bloqueadas no navegador.", "warning");
+        this.addToast("Notificações bloqueadas no navegador.", "warning");
       }
       this.render();
       return;
@@ -341,7 +341,7 @@ export class HabitApp {
       this.addToast("Telemetria do Google Fit atualizada (sem alterar seu histórico manual).");
     } catch (error) {
       console.error("Falha ao importar Google Fit", error);
-      this.addToast("Nao foi possível importar do Google Fit. Confira o token e permissões.", "warning");
+      this.addToast("Não foi possível importar do Google Fit. Confira o token e permissões.", "warning");
     }
   }
 
@@ -352,12 +352,12 @@ export class HabitApp {
       <section class="summary-card">
         <div class="summary-line">
           <span>Google Fit</span>
-          <strong>Importacao diaria</strong>
+          <strong>Importação diária</strong>
         </div>
         <p class="support-copy">Telemetria externa separada do seu histórico manual (event store imutável).</p>
         <div class="summary-line"><span>Passos</span><strong>${telemetry.steps}</strong></div>
         <div class="summary-line"><span>Minutos ativos</span><strong>${telemetry.activeMinutes}</strong></div>
-        <div class="summary-line"><span>Hidratacao (Fit)</span><strong>${formatMl(telemetry.hydrationMl)}</strong></div>
+        <div class="summary-line"><span>Hidratação (Fit)</span><strong>${formatMl(telemetry.hydrationMl)}</strong></div>
         <p class="tiny-copy">${escapeHtml(model.insights.activityInsight)}</p>
         <button type="button" class="action-button accent" data-action="sync-google-fit">Sincronizar Google Fit</button>
       </section>
@@ -370,7 +370,7 @@ export class HabitApp {
     if (target.matches('[data-action="toggle-checkbox"]')) {
       const result = updateHabit(this.state, target.dataset.id, target.checked);
       if (result.blockedReason === "weekly-run-skip-limit") {
-        this.addToast("Voce so pode pular corrida 2x por semana.", "warning");
+        this.addToast("Você só pode pular corrida 2x por semana.", "warning");
         this.render();
         return;
       }
@@ -402,8 +402,8 @@ export class HabitApp {
     if (!notificationsSupported()) {
       return `
         <section class="notice-card">
-          <p class="notice-title">Lembretes de agua</p>
-          <p class="support-copy">Este navegador nao oferece Notification API. O controle fino de agua continua funcionando normalmente.</p>
+          <p class="notice-title">Lembretes de água</p>
+          <p class="support-copy">Este navegador não oferece Notification API. O controle fino de água continua funcionando normalmente.</p>
         </section>
       `;
     }
@@ -415,9 +415,9 @@ export class HabitApp {
       return `
         <section class="notice-card success">
           <div>
-            <p class="notice-title">Lembretes de agua</p>
+            <p class="notice-title">Lembretes de água</p>
             <p class="support-copy">${escapeHtml(reminderSupportMessage(this.reminderMode))}</p>
-            <p class="tiny-copy">Horarios: ${escapeHtml(reminderScheduleText())}</p>
+            <p class="tiny-copy">Horários: ${escapeHtml(reminderScheduleText())}</p>
           </div>
         </section>
       `;
@@ -430,12 +430,12 @@ export class HabitApp {
     return `
       <section class="notice-card">
         <div>
-          <p class="notice-title">Lembretes de agua</p>
-          <p class="support-copy">Avisos as 8h, 10h, 12h, 14h, 16h, 18h e 20h. Se o navegador deixar, eles tambem rodam pelo service worker.</p>
+          <p class="notice-title">Lembretes de água</p>
+          <p class="support-copy">Avisos às 8h, 10h, 12h, 14h, 16h, 18h e 20h. Se o navegador deixar, eles também rodam pelo service worker.</p>
         </div>
         <div class="notice-actions">
           <button type="button" class="action-button accent" data-action="request-notifications">Permitir</button>
-          <button type="button" class="ghost-button" data-action="dismiss-reminder-prompt">Agora nao</button>
+          <button type="button" class="ghost-button" data-action="dismiss-reminder-prompt">Agora não</button>
         </div>
       </section>
     `;
@@ -457,24 +457,24 @@ export class HabitApp {
           <h3>Sono</h3>
           ${renderCheckboxField({
             id: "sleepOnTime",
-            label: "Dormi no horario (22h30)",
+            label: "Dormi no horário (22h30)",
             checked: day.checkboxes.sleepOnTime
           })}
           ${renderTimeField({
             field: "sleepActual",
-            label: "Horario real de dormir",
+            label: "Horário real de dormir",
             value: day.sleepActual,
             ideal: "22:30",
             notice: sleepNotice
           })}
           ${renderCheckboxField({
             id: "wakeOnTime",
-            label: "Acordei no horario (6h30)",
+            label: "Acordei no horário (6h30)",
             checked: day.checkboxes.wakeOnTime
           })}
           ${renderTimeField({
             field: "wakeActual",
-            label: "Horario real de acordar",
+            label: "Horário real de acordar",
             value: day.wakeActual,
             ideal: "06:30",
             notice: wakeNotice
@@ -485,7 +485,7 @@ export class HabitApp {
           <h3>Corrida leve</h3>
           ${renderCheckboxField({
             id: "runDone",
-            label: "Corrida/ativacao realizada",
+            label: "Corrida/ativação realizada",
             checked: day.checkboxes.runDone,
             disabled: day.checkboxes.runSkipped,
             badge: day.checkboxes.runSkipped ? "ignorado" : ""
@@ -494,12 +494,12 @@ export class HabitApp {
             id: "runSkipped",
             label: "Pular hoje",
             checked: day.checkboxes.runSkipped,
-            hint: "Corrida e opcional - nao pule mais que 2x por semana"
+            hint: "Corrida é opcional - não pule mais que 2x por semana"
           })}
         </div>
 
         <div class="section-group">
-          <h3>Alimentacao</h3>
+          <h3>Alimentação</h3>
           ${mealRow(MEAL_FIELDS[0], day.checkboxes.breakfast, day.mealTimes.breakfast)}
         </div>
       `
@@ -517,7 +517,7 @@ export class HabitApp {
       open,
       content: `
         <div class="section-group">
-          <h3>Manha e intervalos</h3>
+          <h3>Manhã e intervalos</h3>
           ${renderCheckboxField({
             id: "bagReady",
             label: "Mochila pronta",
@@ -530,17 +530,17 @@ export class HabitApp {
           })}
           ${renderCheckboxField({
             id: "schoolSnackWater",
-            label: "Intervalo - lanche e agua",
+            label: "Intervalo - lanche e água",
             checked: day.checkboxes.schoolSnackWater
           })}
           ${renderCheckboxField({
             id: "schoolReview",
-            label: "Material revisado para proxima aula",
+            label: "Material revisado para próxima aula",
             checked: day.checkboxes.schoolReview
           })}
         </div>
         <div class="section-group">
-          <h3>Refeicao do meio do dia</h3>
+          <h3>Refeição do meio do dia</h3>
           ${mealRow(MEAL_FIELDS[1], day.checkboxes.lunch, day.mealTimes.lunch)}
         </div>
       `
@@ -558,7 +558,7 @@ export class HabitApp {
       open,
       content: `
         <div class="section-group">
-          <h3>Alimentacao</h3>
+          <h3>Alimentação</h3>
           ${mealRow(MEAL_FIELDS[2], day.checkboxes.preWorkoutMeal, day.mealTimes.preWorkoutMeal)}
           ${mealRow(MEAL_FIELDS[3], day.checkboxes.postWorkoutMeal, day.mealTimes.postWorkoutMeal)}
         </div>
@@ -566,12 +566,12 @@ export class HabitApp {
           <h3>Treino principal (15h - 17h/18h)</h3>
           ${renderCheckboxField({
             id: "trainingActivation",
-            label: "Ativacao geral (10min)",
+            label: "Ativação geral (10min)",
             checked: day.checkboxes.trainingActivation
           })}
           ${renderCheckboxField({
             id: "strengthTraining",
-            label: "Treino de forca (executado)",
+            label: "Treino de força (executado)",
             checked: day.checkboxes.strengthTraining
           })}
           ${renderCheckboxField({
@@ -581,11 +581,11 @@ export class HabitApp {
           })}
           ${renderCheckboxField({
             id: "postStretch",
-            label: "Alongamento pos-treino",
+            label: "Alongamento pós-treino",
             checked: day.checkboxes.postStretch
           })}
           <label class="field-shell textarea-shell">
-            <span class="field-label">Anotacoes do treino</span>
+            <span class="field-label">Anotações do treino</span>
             <textarea
               class="text-area"
               rows="4"
@@ -609,11 +609,11 @@ export class HabitApp {
       open,
       content: `
         <div class="section-group">
-          <h3>Alimentacao</h3>
+          <h3>Alimentação</h3>
           ${mealRow(MEAL_FIELDS[4], day.checkboxes.dinner, day.mealTimes.dinner)}
         </div>
         <div class="section-group">
-          <h3>Recuperacao</h3>
+          <h3>Recuperação</h3>
           ${renderCheckboxField({
             id: "screensOff",
             label: "Desconectar de telas 30min antes (21h30)",
@@ -631,12 +631,12 @@ export class HabitApp {
           })}
           ${renderCheckboxField({
             id: "calmMedia",
-            label: "Ler ou ouvir musica calma",
+            label: "Ler ou ouvir música calma",
             checked: day.checkboxes.calmMedia
           })}
           ${renderCheckboxField({
             id: "sleepOnTime",
-            label: "Deitar no horario (22h30)",
+            label: "Deitar no horário (22h30)",
             checked: day.checkboxes.sleepOnTime,
             hint: "Ligado ao bloco de sono"
           })}
@@ -661,11 +661,11 @@ export class HabitApp {
 
       <section class="summary-card">
         <div class="summary-line">
-          <span>Agua restante</span>
+          <span>Água restante</span>
           <strong>${formatMl(remainingWater)}</strong>
         </div>
         <div class="summary-line">
-          <span>Horarios de lembrete</span>
+          <span>Horários de lembrete</span>
           <strong>${escapeHtml(reminderScheduleText())}</strong>
         </div>
       </section>

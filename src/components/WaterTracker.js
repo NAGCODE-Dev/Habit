@@ -8,14 +8,14 @@ export function renderWaterTracker(day) {
   const percent = Math.min(100, Math.round((day.waterTotalMl / WATER_GOAL_ML) * 100));
   const lastEntry = day.waterEntries.at(-1);
   const helper = day.waterTotalMl >= WATER_GOAL_ML
-    ? "Meta diaria atingida."
+    ? "Meta diária atingida."
     : `${WATER_GOAL_ML - day.waterTotalMl} ml restantes para fechar o dia.`;
 
   return `
     <section class="water-card">
       <div class="water-header">
         <div>
-          <p class="eyebrow">Hidratacao</p>
+          <p class="eyebrow">Hidratação</p>
           <h2>${formatMl(day.waterTotalMl)} / ${formatMl(WATER_GOAL_ML)}</h2>
         </div>
         <div class="water-pill">${percent}%</div>
@@ -58,10 +58,10 @@ export function renderWaterTracker(day) {
 
       <div class="water-footer">
         <button type="button" class="ghost-button" data-action="undo-water" ${lastEntry ? "" : "disabled"}>
-          Desfazer ultimo consumo
+          Desfazer último consumo
         </button>
         <span class="support-copy">
-          ${lastEntry ? `Ultimo registro: ${escapeHtml(String(lastEntry.amount))} ml` : "Nenhum consumo registrado ainda."}
+          ${lastEntry ? `Último registro: ${escapeHtml(String(lastEntry.amount))} ml` : "Nenhum consumo registrado ainda."}
         </span>
       </div>
     </section>
