@@ -10,7 +10,7 @@ import { loadState, saveState } from "../services/storageService.js";
  */
 export function createStateController({
   windowObject = window,
-  onStateChange = () => {},
+  onStateChange = (_state) => {},
   loadStateImpl = loadState,
   saveStateImpl = saveState,
   normalizeAppStateImpl = normalizeAppState,

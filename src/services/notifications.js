@@ -33,9 +33,12 @@ export async function registerBackgroundReminderSync() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
-    if ("periodicSync" in registration) {
-      await registration.periodicSync.register("water-reminders", {
+    const registration = /** @type {ServiceWorkerRegistration & { periodicSync?: { register?: (tag: string, options: { minInterval: number }) => Promise<void> } }} */ (
+      await navigator.serviceWorker.ready
+    );
+    const periodicSync = registration.periodicSync;
+    if (periodicSync && typeof periodicSync.register === "function") {
+      await periodicSync.register("water-reminders", {
         minInterval: 60 * 60 * 1000
       });
       return { supported: true, mode: "periodicSync" };

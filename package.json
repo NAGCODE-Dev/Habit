@@ -9,6 +9,7 @@
     "build": "node ./scripts/build.mjs",
     "preview": "node ./scripts/preview.mjs dist 4173",
     "dev": "node ./scripts/preview.mjs . 4173",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:fast": "node --test tests/unit/*.test.js",
     "test:artifact": "node --test tests/artifact/*.test.js",
     "test:e2e": "playwright test",
@@ -16,7 +17,9 @@
     "test": "npm run test:fast && npm run test:artifact && npm run test:e2e"
   },
   "devDependencies": {
+    "@types/node": "^24.9.1",
     "@playwright/test": "^1.59.1",
-    "fake-indexeddb": "^6.2.5"
+    "fake-indexeddb": "^6.2.5",
+    "typescript": "^5.9.3"
   }
 }

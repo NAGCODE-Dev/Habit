@@ -22,7 +22,10 @@ export function createAppRuntime(rootElement) {
     beforeInstallEvent: null,
     reminderMode: "foreground-only",
     isRendering: false,
-    stopResetWatcher: null
+    stopResetWatcher: null,
+    handleRootClick: null,
+    handleRootChange: null,
+    handleRootInput: null
   };
 
   const viewController = createViewController();
@@ -79,32 +82,39 @@ export function createAppRuntime(rootElement) {
   };
 
   runtime.attachGlobalListeners = () => {
-    runtime.root.addEventListener("click", (event) => {
-      const actionElement = event.target?.closest?.("[data-action]");
+    runtime.handleRootClick = (event) => {
+      const actionElement = event.target instanceof Element
+        ? event.target.closest("[data-action]")
+        : null;
       if (!actionElement) {
         return;
       }
 
       void handleClickAction(runtime, actionElement);
-    });
+    };
 
-    runtime.root.addEventListener("change", (event) => {
+    runtime.handleRootChange = (event) => {
       const target = event.target;
-      if (!target?.dataset?.action) {
+      if (!(target instanceof HTMLElement) || !target.dataset.action) {
         return;
       }
 
       void handleChangeAction(runtime, target);
-    });
+    };
 
-    runtime.root.addEventListener("input", (event) => {
+    runtime.handleRootInput = (event) => {
       const target = event.target;
-      if (!target?.dataset?.action) {
+      if (!(target instanceof HTMLElement) || !target.dataset.action) {
         return;
       }
 
       void handleInputAction(runtime, target);
-    });
+    };
+
+    const { handleRootClick, handleRootChange, handleRootInput } = runtime;
+    runtime.root.addEventListener("click", handleRootClick);
+    runtime.root.addEventListener("change", handleRootChange);
+    runtime.root.addEventListener("input", handleRootInput);
 
     window.addEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
     window.addEventListener("popstate", runtime.handlePopState);
@@ -162,6 +172,19 @@ export function createAppRuntime(rootElement) {
     window.removeEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
     window.removeEventListener("popstate", runtime.handlePopState);
     window.removeEventListener("pagehide", runtime.handlePageHide);
+
+    if (runtime.handleRootClick) {
+      runtime.root.removeEventListener("click", runtime.handleRootClick);
+      runtime.handleRootClick = null;
+    }
+    if (runtime.handleRootChange) {
+      runtime.root.removeEventListener("change", runtime.handleRootChange);
+      runtime.handleRootChange = null;
+    }
+    if (runtime.handleRootInput) {
+      runtime.root.removeEventListener("input", runtime.handleRootInput);
+      runtime.handleRootInput = null;
+    }
   };
 
   return runtime;

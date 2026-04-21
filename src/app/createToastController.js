@@ -5,7 +5,7 @@
  */
 export function createToastController({
   windowObject = window,
-  onChange = () => {}
+  onChange = (_toasts) => {}
 } = {}) {
   let toasts = [];
   const toastTimers = new Map();

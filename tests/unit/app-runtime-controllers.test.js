@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { handleChangeAction, handleInputAction } from "../../src/app/action-handlers.js";
+import { createAppRuntime } from "../../src/app/createAppRuntime.js";
 import { createReminderController } from "../../src/app/createReminderController.js";
 import { createStateController } from "../../src/app/createStateController.js";
 import { createToastController } from "../../src/app/createToastController.js";
 import { createViewController } from "../../src/app/createViewController.js";
 
+/**
+ * @returns {any}
+ */
 function createTimerApi() {
   let nextId = 1;
   const timeouts = new Map();
@@ -46,7 +50,7 @@ function createTimerApi() {
 
 test("viewController sincroniza a URL e normaliza views inválidas", () => {
   const historyCalls = [];
-  const windowObject = {
+  const windowObject = /** @type {any} */ ({
     location: {
       href: "http://127.0.0.1:4173/?view=history"
     },
@@ -56,7 +60,7 @@ test("viewController sincroniza a URL e normaliza views inválidas", () => {
         windowObject.location.href = String(nextUrl);
       }
     }
-  };
+  });
 
   const controller = createViewController({ windowObject });
   assert.equal(controller.getInitialView(), "history");
@@ -161,7 +165,7 @@ test("reminderController persiste lembrete devido e usa toast no foreground", as
 
   const controller = createReminderController({
     windowObject: timerApi,
-    documentObject: { visibilityState: "visible" },
+    documentObject: /** @type {any} */ ({ visibilityState: "visible" }),
     getState: () => currentState,
     commitState: async (nextState) => {
       commits.push(nextState);
@@ -177,11 +181,17 @@ test("reminderController persiste lembrete devido e usa toast no foreground", as
       reminderHour: hour,
       day: { water: { total: state.day.water.total } }
     }),
-    getLegacyDaySnapshotImpl: (day) => ({ waterTotalMl: day.water.total, reminderSentHours: [] }),
+    getLegacyDaySnapshotImpl: (day) => /** @type {any} */ ({
+      waterTotalMl: day.water.total,
+      reminderSentHours: []
+    }),
     buildWaterReminderBodyImpl: (total) => `body:${total}`,
     notificationPermissionStateImpl: () => "granted",
     notificationsSupportedImpl: () => true,
-    registerBackgroundReminderSyncImpl: async () => ({ mode: "periodicSync" }),
+    registerBackgroundReminderSyncImpl: async () => ({
+      supported: true,
+      mode: "periodicSync"
+    }),
     showServiceWorkerNotificationImpl: async (...args) => {
       notifications.push(args);
     }
@@ -229,4 +239,86 @@ test("training-notes usa o caminho único de persistência com debounce e flush 
       scheduleAnalytics: false
     }
   ]);
+});
+
+test("createAppRuntime remove listeners do root e da window no destroy", () => {
+  const originalWindow = /** @type {any} */ (globalThis.window);
+  const originalDocument = /** @type {any} */ (globalThis.document);
+  const rootListeners = new Map();
+  const windowListeners = new Map();
+  let nextTimerId = 1;
+
+  const windowStub = /** @type {any} */ ({
+    addEventListener(type, handler) {
+      windowListeners.set(type, handler);
+    },
+    removeEventListener(type, handler) {
+      if (windowListeners.get(type) === handler) {
+        windowListeners.delete(type);
+      }
+    },
+    clearTimeout() {},
+    clearInterval() {},
+    setTimeout() {
+      return nextTimerId++;
+    },
+    setInterval() {
+      return nextTimerId++;
+    },
+    location: {
+      href: "http://127.0.0.1:4173/"
+    },
+    history: {
+      replaceState() {}
+    }
+  });
+  const documentStub = /** @type {any} */ ({
+    visibilityState: "visible"
+  });
+
+  const root = /** @type {any} */ ({
+    addEventListener(type, handler) {
+      rootListeners.set(type, handler);
+    },
+    removeEventListener(type, handler) {
+      if (rootListeners.get(type) === handler) {
+        rootListeners.delete(type);
+      }
+    }
+  });
+
+  try {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      writable: true,
+      value: windowStub
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      writable: true,
+      value: documentStub
+    });
+
+    const runtime = createAppRuntime(root);
+    runtime.attachGlobalListeners();
+
+    assert.equal(rootListeners.size, 3);
+    assert.equal(windowListeners.size, 3);
+
+    runtime.destroy();
+
+    assert.equal(rootListeners.size, 0);
+    assert.equal(windowListeners.size, 0);
+  } finally {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      writable: true,
+      value: originalWindow
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      writable: true,
+      value: originalDocument
+    });
+  }
 });

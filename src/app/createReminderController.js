@@ -19,7 +19,7 @@ export function createReminderController({
   getState,
   commitState,
   addToast,
-  onModeChange = () => {},
+  onModeChange = (_mode) => {},
   getDueReminderImpl = getDueReminder,
   markReminderSentImpl = markReminderSent,
   getLegacyDaySnapshotImpl = getLegacyDaySnapshot,

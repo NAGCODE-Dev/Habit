@@ -7,22 +7,29 @@ const APP_STATE_BACKUP_KEY = "app-state-backup";
 
 async function seedAppStateOnBoot(page, state) {
   await page.addInitScript(({ seededState, dbName, storeName, primaryKey, backupKey }) => {
-    const request = indexedDB.open(dbName, 1);
+    window["__APP_BOOTSTRAP_BLOCKER__"] = new Promise((resolve, reject) => {
+      const request = indexedDB.open(dbName, 1);
 
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(storeName)) {
-        database.createObjectStore(storeName);
-      }
-    };
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains(storeName)) {
+          database.createObjectStore(storeName);
+        }
+      };
 
-    request.onsuccess = () => {
-      const database = request.result;
-      const transaction = database.transaction(storeName, "readwrite");
-      const store = transaction.objectStore(storeName);
-      store.put(seededState, primaryKey);
-      store.put(seededState, backupKey);
-    };
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+        store.put(seededState, primaryKey);
+        store.put(seededState, backupKey);
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      };
+
+      request.onerror = () => reject(request.error);
+    });
   }, {
     seededState: state,
     dbName: DB_NAME,
@@ -64,7 +71,7 @@ async function readAppState(page) {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    window.__DISABLE_SERVICE_WORKER__ = true;
+    window["__DISABLE_SERVICE_WORKER__"] = true;
   });
 });
 
