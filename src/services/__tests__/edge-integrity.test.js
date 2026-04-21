@@ -4,7 +4,7 @@ import { EVENT_TYPES, reduceEvents } from '../eventService.js';
 import { compactDate, reconstructDayWithSnapshot, COMPACT_AFTER_EVENTS } from '../snapshotService.js';
 import { appendEvent } from '../eventStore.js';
 import { validateDay, repairDatabase } from '../integrityService.js';
-import { addWater, normalizeAppState, updateHabit } from '../dayService.js';
+import { addWater, normalizeAppState, toggleSection, updateHabit, updateMealTime, updateSleepTime } from '../dayService.js';
 
 test('reduceEvents é determinístico com eventos fora de ordem', () => {
   const date = '2026-04-21';
@@ -107,4 +107,29 @@ test('compactação repetida com append intercalado não perde dados', () => {
 
   const reconstructed = reconstructDayWithSnapshot(state, date);
   assert.equal(reconstructed.water.total, (events.length * 100) + 150);
+});
+
+test('dayService ignora inputs inválidos para evitar corrupção de estado', () => {
+  const date = '2026-04-21';
+  const base = normalizeAppState(null, date);
+
+  const invalidSection = toggleSection(base, '__proto__');
+  assert.equal(invalidSection.sectionsOpen.morning, base.sectionsOpen.morning);
+  assert.equal(Object.getPrototypeOf(invalidSection.sectionsOpen), Object.prototype);
+
+  const invalidHabitUpdate = updateHabit(base, '__proto__', true);
+  assert.equal(invalidHabitUpdate.state.day.habits.runDone, false);
+
+  const invalidSleep = updateSleepTime(base, 'sleepActual', '99:99');
+  assert.equal(invalidSleep.day.sleep.actual.sleep, '');
+
+  const invalidMeal = updateMealTime(base, 'lunch', '25:99');
+  assert.equal(invalidMeal.day.meals.lunch, '');
+});
+
+test('addWater impõe limite superior para evitar payload anômalo', () => {
+  const date = '2026-04-21';
+  const base = normalizeAppState(null, date);
+  const state = addWater(base, 6000);
+  assert.equal(state.day.water.total, 0);
 });
