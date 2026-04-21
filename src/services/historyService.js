@@ -2,6 +2,19 @@ import { MAX_HISTORY_DAYS, WATER_GOAL_ML } from "./constants.js";
 import { addDays, listIntermediateDateKeys } from "./date-utils.js";
 
 export function computeProgress(day) {
+  const historySummary = day?.historySummary;
+  if (historySummary) {
+    const completed = Math.max(0, Math.round(Number(historySummary.completed ?? 0)));
+    const total = Math.max(1, Math.round(Number(historySummary.total ?? 1)));
+    const percentage = Math.max(0, Math.round(Number(historySummary.percentage ?? Math.round((completed / total) * 100))));
+    return {
+      completed,
+      total,
+      percentage,
+      waterGoalMet: Boolean(historySummary.waterGoalMet)
+    };
+  }
+
   const habitEntries = Object.entries(day.habits ?? {});
   const trackedHabits = habitEntries.filter(([key]) => key !== "runSkipped" && key !== "runDone");
   const completedHabits = trackedHabits.reduce((sum, [, checked]) => sum + (checked ? 1 : 0), 0);
