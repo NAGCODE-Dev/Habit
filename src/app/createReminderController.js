@@ -55,15 +55,8 @@ export function createReminderController({
       return null;
     }
 
-    const nextState = markReminderSentImpl(state, dueHour);
-    await commitState(nextState, { render: true });
-    if (isStale(version)) {
-      return null;
-    }
-
-    const currentState = getState();
     const title = `Água ${String(dueHour).padStart(2, "0")}:00`;
-    const body = buildWaterReminderBodyImpl(currentState.day.water.total);
+    const body = buildWaterReminderBodyImpl(state.day.water.total);
 
     if (documentObject.visibilityState === "visible") {
       addToast(body);
@@ -71,8 +64,20 @@ export function createReminderController({
       await showServiceWorkerNotificationImpl(
         title,
         body,
-        `water-${currentState.currentDayKey}-${dueHour}`
+        `water-${state.currentDayKey}-${dueHour}`
       );
+    } else {
+      return null;
+    }
+
+    if (isStale(version)) {
+      return null;
+    }
+
+    const nextState = markReminderSentImpl(state, dueHour);
+    await commitState(nextState, { render: true });
+    if (isStale(version)) {
+      return null;
     }
 
     return dueHour;

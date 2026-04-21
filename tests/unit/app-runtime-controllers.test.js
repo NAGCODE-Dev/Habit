@@ -210,6 +210,7 @@ test("reminderController persiste lembrete devido e usa toast no foreground", as
     documentObject: /** @type {any} */ ({ visibilityState: "visible" }),
     getState: () => currentState,
     commitState: async (nextState) => {
+      assert.deepEqual(toasts, ["body:500"]);
       commits.push(nextState);
       currentState = nextState;
     },
@@ -246,6 +247,53 @@ test("reminderController persiste lembrete devido e usa toast no foreground", as
   assert.equal(dueHour, 14);
   assert.equal(commits.length, 1);
   assert.deepEqual(toasts, ["body:500"]);
+  assert.equal(notifications.length, 0);
+});
+
+test("reminderController não consome reminder quando não há canal de entrega", async () => {
+  const timerApi = createTimerApi();
+  const commits = [];
+  const toasts = [];
+  const notifications = [];
+  const controller = createReminderController({
+    windowObject: timerApi,
+    documentObject: /** @type {any} */ ({ visibilityState: "hidden" }),
+    getState: () => ({
+      currentDayKey: "2026-04-21",
+      day: { water: { total: 500 } }
+    }),
+    commitState: async (nextState) => {
+      commits.push(nextState);
+    },
+    addToast: (message) => {
+      toasts.push(message);
+    },
+    onModeChange: () => {},
+    getDueReminderImpl: () => 14,
+    markReminderSentImpl: (state, hour) => ({
+      ...state,
+      reminderHour: hour
+    }),
+    getLegacyDaySnapshotImpl: (day) => /** @type {any} */ ({
+      waterTotalMl: day.water.total,
+      reminderSentHours: []
+    }),
+    buildWaterReminderBodyImpl: (total) => `body:${total}`,
+    notificationPermissionStateImpl: () => "default",
+    notificationsSupportedImpl: () => true,
+    registerBackgroundReminderSyncImpl: async () => ({
+      supported: true,
+      mode: "periodicSync"
+    }),
+    showServiceWorkerNotificationImpl: async (...args) => {
+      notifications.push(args);
+    }
+  });
+
+  const dueHour = await controller.checkNow(new Date("2026-04-21T14:00:00Z"));
+  assert.equal(dueHour, null);
+  assert.equal(commits.length, 0);
+  assert.equal(toasts.length, 0);
   assert.equal(notifications.length, 0);
 });
 
