@@ -146,10 +146,11 @@ test('reduceEvents ignora eventos históricos inválidos durante replay', () => 
   assert.equal(replay.meals.lunch, '');
 });
 
-test('repairDatabase sanitiza telemetryShadow do Google Fit', () => {
+test('repairDatabase descarta telemetryShadow legado do Google Fit', () => {
   const date = '2026-04-21';
   const repaired = repairDatabase({
     currentDayKey: date,
+    day: { date, water: { total: 300 } },
     telemetryShadow: {
       googleFit: {
         [date]: { steps: '1200', hydrationMl: -10, activeMinutes: 30 }
@@ -157,7 +158,6 @@ test('repairDatabase sanitiza telemetryShadow do Google Fit', () => {
     }
   }, date);
 
-  assert.equal(repaired.telemetryShadow.googleFit[date].steps, 1200);
-  assert.equal(repaired.telemetryShadow.googleFit[date].hydrationMl, 0);
-  assert.equal(repaired.telemetryShadow.googleFit[date].activeMinutes, 30);
+  assert.equal('telemetryShadow' in repaired, false);
+  assert.equal(repaired.day.water.total, 300);
 });

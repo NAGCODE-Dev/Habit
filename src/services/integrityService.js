@@ -175,34 +175,6 @@ function sanitizeAnalyticsCache(rawCache) {
   };
 }
 
-function sanitizeTelemetryShadow(rawTelemetry) {
-  if (!isPlainObject(rawTelemetry)) {
-    return { googleFit: {} };
-  }
-
-  const rawGoogleFit = isPlainObject(rawTelemetry.googleFit) ? rawTelemetry.googleFit : {};
-  const googleFit = {};
-  for (const [dateKey, item] of Object.entries(rawGoogleFit)) {
-    const safeDate = toDateKey(dateKey, "");
-    if (!safeDate || !isPlainObject(item)) {
-      continue;
-    }
-
-    googleFit[safeDate] = {
-      source: "google-fit",
-      steps: Math.max(0, Math.round(safeNumber(item.steps, 0))),
-      calories: Math.max(0, Math.round(safeNumber(item.calories, 0))),
-      hydrationMl: Math.max(0, Math.round(safeNumber(item.hydrationMl, 0))),
-      activeMinutes: Math.max(0, Math.round(safeNumber(item.activeMinutes, 0))),
-      sleepStart: typeof item.sleepStart === "string" ? item.sleepStart : "",
-      wakeTime: typeof item.wakeTime === "string" ? item.wakeTime : "",
-      updatedAt: Math.max(0, Math.floor(safeNumber(item.updatedAt, Date.now())))
-    };
-  }
-
-  return { googleFit };
-}
-
 export function createSafeDayTemplate(dateKey) {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -526,12 +498,22 @@ function migrateV5ToV6(state) {
   return next;
 }
 
+function migrateV6ToV7(state) {
+  const next = isPlainObject(state) ? { ...state } : {};
+  next.schemaVersion = 7;
+  next.version = 7;
+  next.analyticsCache = sanitizeAnalyticsCache(next.analyticsCache);
+  delete next.telemetryShadow;
+  return next;
+}
+
 const MIGRATIONS = {
   1: (state) => migrateV1ToV2(state),
   2: (state, todayKey) => migrateV2ToV3(state, todayKey),
   3: (state, todayKey) => migrateV3ToV4(state, todayKey),
   4: (state, todayKey) => migrateV4ToV5(state, todayKey),
-  5: (state) => migrateV5ToV6(state)
+  5: (state) => migrateV5ToV6(state),
+  6: (state) => migrateV6ToV7(state)
 };
 
 export function migrateIfNeeded(rawState, todayKey = getLocalDateKey()) {
@@ -569,7 +551,6 @@ export function repairDatabase(rawState, todayKey = getLocalDateKey()) {
       reminderPromptDismissed: Boolean(migrated.preferences?.reminderPromptDismissed)
     },
     analyticsCache: sanitizeAnalyticsCache(migrated.analyticsCache),
-    telemetryShadow: sanitizeTelemetryShadow(migrated.telemetryShadow),
     day: validateDay(migrated.day, toDateKey(migrated.currentDayKey, todayKey)),
     events: deduplicateEvents((Array.isArray(migrated.events) ? migrated.events : [])
       .map((event) => sanitizeEvent(event, toDateKey(migrated.currentDayKey, todayKey)))

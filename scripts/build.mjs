@@ -7,6 +7,16 @@ import "./generate-assets.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
+const srcDir = path.join(rootDir, "src");
+
+function shouldCopySourceEntry(sourcePath) {
+  const relativePath = path.relative(srcDir, sourcePath).split(path.sep).join("/");
+  if (!relativePath) {
+    return true;
+  }
+
+  return !relativePath.split("/").includes("__tests__");
+}
 
 async function listFiles(directory, root = directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -46,7 +56,10 @@ async function main() {
   await rm(distDir, { recursive: true, force: true });
   await mkdir(distDir, { recursive: true });
 
-  await cp(path.join(rootDir, "src"), path.join(distDir, "src"), { recursive: true });
+  await cp(srcDir, path.join(distDir, "src"), {
+    recursive: true,
+    filter: shouldCopySourceEntry
+  });
   await cp(path.join(rootDir, "index.html"), path.join(distDir, "index.html"));
 
   const publicEntries = await readdir(path.join(rootDir, "public"), { withFileTypes: true });
