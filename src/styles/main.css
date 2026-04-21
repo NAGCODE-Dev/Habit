@@ -1,18 +1,31 @@
 :root {
-  color-scheme: light;
-  --bg: #eef4f1;
-  --bg-strong: #f8fbfa;
-  --surface: rgba(251, 253, 252, 0.92);
-  --surface-strong: #ffffff;
-  --border: rgba(103, 122, 129, 0.16);
-  --text: #18252a;
-  --muted: #5d7076;
-  --accent: #36918e;
-  --accent-soft: rgba(54, 145, 142, 0.12);
-  --water: #4699d2;
-  --water-soft: rgba(70, 153, 210, 0.14);
-  --warning: #d5764b;
-  --shadow: 0 14px 40px rgba(29, 49, 54, 0.08);
+  color-scheme: dark;
+  --bg: #081115;
+  --bg-strong: #101a1f;
+  --surface: rgba(19, 29, 34, 0.9);
+  --surface-strong: #162229;
+  --surface-soft: rgba(24, 35, 40, 0.76);
+  --surface-muted: rgba(255, 255, 255, 0.05);
+  --surface-track: rgba(133, 156, 166, 0.2);
+  --surface-success: rgba(28, 74, 61, 0.56);
+  --border: rgba(133, 156, 166, 0.18);
+  --border-soft: rgba(133, 156, 166, 0.12);
+  --border-strong: rgba(133, 156, 166, 0.26);
+  --text: #e7f1f2;
+  --text-soft: rgba(231, 241, 242, 0.78);
+  --muted: #8fa4ab;
+  --accent: #59c1b7;
+  --accent-soft: rgba(89, 193, 183, 0.16);
+  --water: #61b7f0;
+  --water-soft: rgba(97, 183, 240, 0.16);
+  --warning: #e38a5d;
+  --shadow: 0 22px 58px rgba(0, 0, 0, 0.36);
+  --inverse: #091216;
+  --calendar-none: rgba(122, 137, 145, 0.18);
+  --level-red: rgba(220, 96, 83, 0.34);
+  --level-orange: rgba(228, 148, 82, 0.34);
+  --level-yellow: rgba(230, 194, 84, 0.34);
+  --level-green: rgba(94, 168, 103, 0.34);
   --radius-lg: 28px;
   --radius-md: 20px;
   --radius-sm: 14px;
@@ -27,8 +40,9 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top right, rgba(79, 174, 170, 0.16), transparent 30%),
-    radial-gradient(circle at bottom left, rgba(236, 131, 78, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(89, 193, 183, 0.2), transparent 32%),
+    radial-gradient(circle at bottom left, rgba(227, 138, 93, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(7, 11, 14, 0.84), transparent 44%),
     var(--bg);
   color: var(--text);
   font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
@@ -150,7 +164,7 @@ button {
 .progress-track {
   position: relative;
   height: 12px;
-  background: rgba(188, 204, 201, 0.4);
+  background: var(--surface-track);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -181,8 +195,8 @@ button {
 
 .metric-card {
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(103, 122, 129, 0.12);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
   padding: 14px;
 }
 
@@ -193,7 +207,7 @@ button {
 }
 
 .metric-card.water {
-  background: rgba(70, 153, 210, 0.08);
+  background: var(--water-soft);
 }
 
 .hero-actions {
@@ -225,19 +239,19 @@ button {
 }
 
 .tab-button {
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--surface-soft);
   color: var(--muted);
 }
 
 .tab-button.is-active {
   background: var(--text);
-  color: #f7fbfa;
+  color: var(--inverse);
 }
 
 .ghost-button {
   background: transparent;
   color: var(--text);
-  border-color: rgba(24, 37, 42, 0.12);
+  border-color: var(--border-soft);
 }
 
 .ghost-button:disabled {
@@ -246,9 +260,9 @@ button {
 }
 
 .action-button {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface-soft);
   color: var(--text);
-  border-color: rgba(24, 37, 42, 0.08);
+  border-color: var(--border-soft);
 }
 
 .action-button.accent {
@@ -277,7 +291,7 @@ button {
 }
 
 .notice-card.success {
-  background: rgba(235, 249, 244, 0.92);
+  background: var(--surface-success);
 }
 
 .notice-title,
@@ -328,10 +342,28 @@ button {
   width: 100%;
   min-height: 48px;
   border-radius: 16px;
-  border: 1px solid rgba(103, 122, 129, 0.18);
+  border: 1px solid var(--border);
   background: var(--surface-strong);
   color: var(--text);
   padding: 12px 14px;
+}
+
+.text-input::placeholder,
+.time-input::placeholder,
+.text-area::placeholder {
+  color: var(--muted);
+}
+
+.text-input:focus,
+.time-input:focus,
+.text-area:focus,
+.tab-button:focus-visible,
+.ghost-button:focus-visible,
+.action-button:focus-visible,
+.section-toggle:focus-visible,
+.toast-close:focus-visible {
+  outline: 2px solid rgba(89, 193, 183, 0.5);
+  outline-offset: 2px;
 }
 
 .text-area {
@@ -374,7 +406,7 @@ button {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(54, 145, 142, 0.1);
+  background: var(--accent-soft);
   color: var(--accent);
   font-size: 1.35rem;
 }
@@ -400,8 +432,8 @@ button {
   display: grid;
   gap: 10px;
   border-radius: 18px;
-  border: 1px solid rgba(103, 122, 129, 0.12);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-soft);
   padding: 14px;
 }
 
@@ -411,8 +443,8 @@ button {
 }
 
 .check-row.is-checked {
-  border-color: rgba(54, 145, 142, 0.28);
-  background: rgba(54, 145, 142, 0.08);
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
 }
 
 .check-row.is-disabled {
@@ -472,8 +504,8 @@ button {
 .time-field {
   border-radius: 18px;
   padding: 14px;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(103, 122, 129, 0.12);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
 }
 
 .time-copy {
@@ -524,12 +556,12 @@ button {
 .mini-heat-cell {
   min-height: 44px;
   border-radius: 12px;
-  border: 1px solid rgba(24, 37, 42, 0.08);
+  border: 1px solid var(--border-soft);
   display: grid;
   place-items: center;
   font-size: 0.75rem;
   font-weight: 700;
-  color: rgba(24, 37, 42, 0.8);
+  color: var(--text-soft);
 }
 
 .insight-list {
@@ -577,7 +609,7 @@ button {
   height: 16px;
   border-radius: 6px;
   display: inline-block;
-  border: 1px solid rgba(24, 37, 42, 0.08);
+  border: 1px solid var(--border-soft);
 }
 
 .month-card {
@@ -607,12 +639,12 @@ button {
   min-height: 56px;
   border-radius: 16px;
   padding: 8px 6px;
-  border: 1px solid rgba(24, 37, 42, 0.06);
+  border: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: flex-start;
-  background: rgba(235, 240, 239, 0.56);
+  background: var(--surface-soft);
 }
 
 .calendar-cell.is-empty {
@@ -627,7 +659,7 @@ button {
 }
 
 .calendar-cell.is-today {
-  box-shadow: inset 0 0 0 2px rgba(24, 37, 42, 0.12);
+  box-shadow: inset 0 0 0 2px var(--border-strong);
 }
 
 .calendar-day-number {
@@ -637,27 +669,27 @@ button {
 
 .calendar-score {
   font-size: 0.72rem;
-  color: rgba(24, 37, 42, 0.78);
+  color: var(--text-soft);
 }
 
 .level-none {
-  background: rgba(224, 231, 229, 0.7);
+  background: var(--calendar-none);
 }
 
 .level-red {
-  background: rgba(220, 96, 83, 0.28);
+  background: var(--level-red);
 }
 
 .level-orange {
-  background: rgba(228, 148, 82, 0.28);
+  background: var(--level-orange);
 }
 
 .level-yellow {
-  background: rgba(230, 194, 84, 0.32);
+  background: var(--level-yellow);
 }
 
 .level-green {
-  background: rgba(94, 168, 103, 0.28);
+  background: var(--level-green);
 }
 
 .recent-history-row {
@@ -667,8 +699,8 @@ button {
   gap: 12px;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(103, 122, 129, 0.12);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
 }
 
 .history-meta {
