@@ -75,6 +75,10 @@ Fluxo:
 - Android/Chrome: instalar pelo navegador.
 - iPhone/Safari: compartilhar -> adicionar a tela de inicio.
 
+## Integrações de saúde
+
+No momento, integrações externas de saúde (Google Fit/Health Connect) foram removidas do app para manter o fluxo estável.
+
 ## Validacao local
 
 - `npm run build`
