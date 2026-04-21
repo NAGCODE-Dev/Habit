@@ -27,23 +27,21 @@ import {
   requestNotificationPermission,
   showServiceWorkerNotification
 } from "./services/notifications.js";
-import { startDailyResetWatcher } from "./services/reset-scheduler.js";
-import { loadAppState, saveAppState } from "./services/storage.js";
 import {
   addWater,
   dismissReminderPrompt,
-  getProgressStats,
+  getLegacyDaySnapshot,
   markReminderSent,
-  normalizeState,
-  rotateStateToToday,
-  summarizeDay,
-  toggleCheckbox,
+  normalizeAppState,
   toggleSection,
   undoLastWater,
+  updateHabit,
   updateMealTime,
   updateSleepTime,
   updateTrainingNotes
-} from "./services/state.js";
+} from "./services/dayService.js";
+import { computeProgress, summarizeDay } from "./services/historyService.js";
+import { loadState, saveState } from "./services/storageService.js";
 
 function mealRow(meal, checked, timeValue) {
   return `
@@ -77,7 +75,6 @@ export class HabitApp {
     this.toastTimers = new Map();
     this.beforeInstallEvent = null;
     this.reminderMode = "foreground-only";
-    this.cleanupResetWatcher = () => {};
     this.reminderInterval = 0;
     this.isRendering = false;
   }
@@ -100,18 +97,14 @@ export class HabitApp {
 
   async mount() {
     this.activeView = this.getInitialView();
-    this.state = normalizeState(null);
+    this.state = normalizeAppState(null);
     this.attachGlobalListeners();
     this.render();
 
-    const storedState = await loadAppState();
-    this.state = rotateStateToToday(storedState ?? this.state);
-    void saveAppState(this.state);
+    const storedState = await loadState();
+    this.state = normalizeAppState(storedState ?? this.state);
+    void saveState(this.state);
     this.render();
-
-    this.cleanupResetWatcher = startDailyResetWatcher(() => {
-      void this.ensureCurrentDay();
-    });
 
     void this.configureNotifications();
     this.startReminderPolling();
@@ -119,7 +112,6 @@ export class HabitApp {
   }
 
   destroy() {
-    this.cleanupResetWatcher();
     window.clearInterval(this.reminderInterval);
     window.removeEventListener("beforeinstallprompt", this.handleBeforeInstallPrompt);
   }
@@ -153,19 +145,19 @@ export class HabitApp {
   }
 
   async ensureCurrentDay() {
-    const nextState = rotateStateToToday(this.state);
+    const nextState = normalizeAppState(this.state);
     if (JSON.stringify(nextState) === JSON.stringify(this.state)) {
       return;
     }
 
     this.state = nextState;
-    await saveAppState(this.state);
+    await saveState(this.state);
     this.render();
   }
 
   async persistState(nextState, { render = true } = {}) {
-    this.state = normalizeState(nextState);
-    await saveAppState(this.state);
+    this.state = normalizeAppState(nextState);
+    await saveState(this.state);
     if (render) {
       this.render();
     }
@@ -198,7 +190,8 @@ export class HabitApp {
 
     const runCheck = async () => {
       await this.ensureCurrentDay();
-      const dueHour = getDueReminder(this.state.day, new Date());
+      const dayView = getLegacyDaySnapshot(this.state.day);
+      const dueHour = getDueReminder(dayView, new Date());
       if (dueHour === null) {
         return;
       }
@@ -207,7 +200,7 @@ export class HabitApp {
       await this.persistState(nextState, { render: true });
 
       const title = `Agua ${String(dueHour).padStart(2, "0")}:00`;
-      const body = buildWaterReminderBody(this.state.day.waterTotalMl);
+      const body = buildWaterReminderBody(this.state.day.water.total);
 
       if (document.visibilityState === "visible") {
         this.addToast(body);
@@ -311,7 +304,13 @@ export class HabitApp {
     const target = event.target;
 
     if (target.matches('[data-action="toggle-checkbox"]')) {
-      await this.persistState(toggleCheckbox(this.state, target.dataset.id, target.checked));
+      const result = updateHabit(this.state, target.dataset.id, target.checked);
+      if (result.blockedReason === "weekly-run-skip-limit") {
+        this.addToast("Voce so pode pular corrida 2x por semana.", "warning");
+        this.render();
+        return;
+      }
+      await this.persistState(result.state);
       return;
     }
 
@@ -332,7 +331,7 @@ export class HabitApp {
     }
 
     this.state = updateTrainingNotes(this.state, target.value);
-    await saveAppState(this.state);
+    await saveState(this.state);
   }
 
   renderReminderBanner() {
@@ -379,7 +378,7 @@ export class HabitApp {
   }
 
   renderMorningSection() {
-    const day = this.state.day;
+    const day = getLegacyDaySnapshot(this.state.day);
     const open = this.state.sectionsOpen.morning;
     const sleepNotice = diffNotice(day.sleepActual, "22:30");
     const wakeNotice = diffNotice(day.wakeActual, "06:30");
@@ -444,7 +443,7 @@ export class HabitApp {
   }
 
   renderSchoolSection() {
-    const day = this.state.day;
+    const day = getLegacyDaySnapshot(this.state.day);
     const open = this.state.sectionsOpen.school;
 
     return renderSectionCard({
@@ -485,7 +484,7 @@ export class HabitApp {
   }
 
   renderAfternoonSection() {
-    const day = this.state.day;
+    const day = getLegacyDaySnapshot(this.state.day);
     const open = this.state.sectionsOpen.afternoon;
 
     return renderSectionCard({
@@ -536,7 +535,7 @@ export class HabitApp {
   }
 
   renderNightSection() {
-    const day = this.state.day;
+    const day = getLegacyDaySnapshot(this.state.day);
     const open = this.state.sectionsOpen.night;
 
     return renderSectionCard({
@@ -583,10 +582,11 @@ export class HabitApp {
   }
 
   renderTodayView() {
-    const remainingWater = Math.max(0, WATER_GOAL_ML - this.state.day.waterTotalMl);
+    const day = getLegacyDaySnapshot(this.state.day);
+    const remainingWater = Math.max(0, WATER_GOAL_ML - day.waterTotalMl);
     return `
       ${this.renderReminderBanner()}
-      ${renderWaterTracker(this.state.day)}
+      ${renderWaterTracker(day)}
 
       <section class="summary-card">
         <div class="summary-line">
@@ -612,7 +612,8 @@ export class HabitApp {
     }
 
     this.isRendering = true;
-    const progress = getProgressStats(this.state.day);
+    const progress = computeProgress(this.state.day);
+    const day = getLegacyDaySnapshot(this.state.day);
     const shell = `
       <main class="app-shell">
         ${renderProgressHeader({
@@ -621,7 +622,7 @@ export class HabitApp {
           percentage: progress.percentage,
           completed: progress.completed,
           total: progress.total,
-          waterTotalMl: this.state.day.waterTotalMl,
+          waterTotalMl: day.waterTotalMl,
           installAvailable: Boolean(this.beforeInstallEvent)
         })}
 

@@ -6,7 +6,9 @@ export const DB_NAME = "habit-athlete-pwa";
 export const DB_VERSION = 1;
 export const DB_STORE = "kv";
 export const DB_APP_STATE_KEY = "app-state";
+export const DB_APP_STATE_BACKUP_KEY = "app-state-backup";
 export const MAX_HISTORY_DAYS = 540;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export const DEFAULT_SECTION_OPEN = {
   morning: true,

@@ -16,6 +16,7 @@ Checklist diario pessoal com treino, agua, sono e historico local.
 ## Comandos
 
 ```bash
+npm run dev
 npm run build
 npm run preview
 ```
@@ -35,6 +36,14 @@ npm run preview
 ```
 
 Abre em `http://localhost:4173`.
+
+## Dev
+
+```bash
+npm run dev
+```
+
+Abre em `http://localhost:4173` servindo a raiz do projeto.
 
 ## GitHub + Vercel
 
