@@ -4,6 +4,7 @@ import {
   countRunSkipsInLastWeek,
   rotateHistoryToDate
 } from "./historyService.js";
+import { DEFAULT_SECTION_OPEN, MEAL_FIELDS } from "./constants.js";
 import {
   createSafeDayTemplate,
   repairDatabase,
@@ -21,8 +22,21 @@ import {
   sanitizeWaterAmount
 } from "./domainGuards.js";
 
+const VALID_SECTION_IDS = new Set(Object.keys(DEFAULT_SECTION_OPEN));
+const VALID_MEAL_IDS = new Set(MEAL_FIELDS.map((meal) => meal.id));
+const TIME_VALUE_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function isValidHabitId(state, habitId) {
+  return typeof habitId === "string" && Object.hasOwn(state.day.habits, habitId);
+}
+
+function sanitizeTimeValue(value) {
+  const time = String(value ?? "").trim();
+  return TIME_VALUE_PATTERN.test(time) ? time : "";
 }
 
 export function createDefaultDay(dateKey) {
