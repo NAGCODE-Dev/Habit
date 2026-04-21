@@ -80,7 +80,7 @@ export function diffNotice(actualTime, idealTime) {
     return "";
   }
 
-  return `Diferenca de ${difference}min - ajuste amanha.`;
+  return `Diferença de ${difference}min - ajuste amanhã.`;
 }
 
 export function nowTimeValue(date = new Date()) {

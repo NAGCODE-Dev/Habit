@@ -66,6 +66,7 @@ button {
 .hero-card,
 .water-card,
 .notice-card,
+.analytics-card,
 .section-card,
 .summary-card,
 .history-card,
@@ -265,6 +266,7 @@ button {
 .notice-card,
 .summary-card,
 .water-card,
+.analytics-card,
 .section-card,
 .history-card,
 .history-overview-card,
@@ -500,6 +502,41 @@ button {
   gap: 10px;
 }
 
+.analytics-card {
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.analytics-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mini-heatmap {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-heat-cell {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(24, 37, 42, 0.08);
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(24, 37, 42, 0.8);
+}
+
+.insight-list {
+  display: grid;
+  gap: 6px;
+}
+
 .summary-line strong {
   text-align: right;
 }
@@ -712,6 +749,7 @@ button {
   .hero-card,
   .water-card,
   .notice-card,
+  .analytics-card,
   .summary-card,
   .history-card,
   .empty-state {
@@ -725,6 +763,7 @@ button {
   .hero-metrics,
   .history-grid,
   .history-overview-grid,
+  .analytics-grid,
   .calendar-legend {
     grid-template-columns: 1fr;
   }

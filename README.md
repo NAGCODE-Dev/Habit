@@ -16,6 +16,7 @@ Checklist diario pessoal com treino, agua, sono e historico local.
 ## Comandos
 
 ```bash
+npm run dev
 npm run build
 npm run preview
 ```
@@ -35,6 +36,22 @@ npm run preview
 ```
 
 Abre em `http://localhost:4173`.
+
+## Dev
+
+```bash
+npm run dev
+```
+
+Abre em `http://localhost:4173` servindo a raiz do projeto.
+
+## Arquitetura de dados (resumo)
+
+- Fonte de verdade: eventos em IndexedDB.
+- Reconstrucao do dia: replay de eventos com suporte a snapshot + delta.
+- Compactacao: snapshots por dia para reduzir replay completo frequente.
+- Integridade: migracoes e saneamento de estado por versao de schema.
+- Analytics: camada separada de query + metricas + insights, com cache.
 
 ## GitHub + Vercel
 
