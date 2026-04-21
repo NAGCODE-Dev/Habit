@@ -25,6 +25,9 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+/**
+ * Cria o dia base já validado no schema atual do domínio.
+ */
 export function createDefaultDay(dateKey) {
   return validateDay(createSafeDayTemplate(dateKey), dateKey);
 }
@@ -89,6 +92,9 @@ export function toggleSection(state, sectionId) {
   return next;
 }
 
+/**
+ * Persiste um toggle de hábito como evento e devolve o dia recomposto.
+ */
 export function updateHabit(state, habitId, checked) {
   const next = withProgress(normalizeAppState(state));
   if (!isValidHabitId(next.day, habitId)) {
@@ -156,6 +162,9 @@ export function updateTrainingNotes(state, value) {
   return next;
 }
 
+/**
+ * Registra uma ingestão de água validada e recompõe o estado derivado.
+ */
 export function addWater(state, amount) {
   const safeAmount = sanitizeWaterAmount(amount);
   if (safeAmount === null) {

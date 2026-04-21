@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-
-import { shouldSilenceBackgroundSyncError } from "../notifications.js";
+import { shouldSilenceBackgroundSyncError } from "../../src/services/notifications.js";
 
 test("shouldSilenceBackgroundSyncError silencia NotAllowedError", () => {
   assert.equal(shouldSilenceBackgroundSyncError({ name: "NotAllowedError" }), true);

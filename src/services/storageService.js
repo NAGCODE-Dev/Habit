@@ -7,6 +7,7 @@ import {
 } from "./constants.js";
 import { getLocalDateKey } from "./date-utils.js";
 import { repairDatabase } from "./integrityService.js";
+import { logOperationalError } from "./logger.js";
 
 let dbPromise = null;
 
@@ -60,7 +61,7 @@ export async function loadState() {
     const rawState = await readRawState();
     return repairDatabase(rawState, getLocalDateKey());
   } catch (error) {
-    console.error("Unable to load app state", error);
+    logOperationalError("storage/load", error);
     return repairDatabase(null, getLocalDateKey());
   }
 }
@@ -82,6 +83,6 @@ export async function saveState(state) {
       transaction.onabort = () => reject(transaction.error);
     });
   } catch (error) {
-    console.error("Unable to save app state", error);
+    logOperationalError("storage/save", error);
   }
 }

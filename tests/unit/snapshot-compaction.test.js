@@ -1,10 +1,14 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { compactDate, COMPACT_AFTER_EVENTS, reconstructDayWithSnapshot } from '../snapshotService.js';
-import { EVENT_TYPES, reduceEvents } from '../eventService.js';
+import test from "node:test";
+import assert from "node:assert/strict";
+import { EVENT_TYPES, reduceEvents } from "../../src/services/eventService.js";
+import {
+  COMPACT_AFTER_EVENTS,
+  compactDate,
+  reconstructDayWithSnapshot
+} from "../../src/services/snapshotService.js";
 
-test('compactDate gera snapshot e preserva reconstrução', () => {
-  const date = '2026-04-21';
+test("compactDate gera snapshot e preserva reconstrução", () => {
+  const date = "2026-04-21";
   const events = Array.from({ length: COMPACT_AFTER_EVENTS + 1 }, (_, index) => ({
     id: `e-${index}`,
     date,

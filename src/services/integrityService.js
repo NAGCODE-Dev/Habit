@@ -175,6 +175,9 @@ function sanitizeAnalyticsCache(rawCache) {
   };
 }
 
+/**
+ * Gera um template seguro usado por replay, migração e reparo do dia.
+ */
 export function createSafeDayTemplate(dateKey) {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -220,6 +223,9 @@ export function createSafeDayTemplate(dateKey) {
   };
 }
 
+/**
+ * Normaliza dias atuais, snapshots e formatos legados para o schema vigente.
+ */
 export function validateDay(day, fallbackDateKey = getLocalDateKey()) {
   const base = createSafeDayTemplate(fallbackDateKey);
   const input = isPlainObject(day) ? day : {};
@@ -536,6 +542,9 @@ export function migrateIfNeeded(rawState, todayKey = getLocalDateKey()) {
   };
 }
 
+/**
+ * Aplica migrações e saneamento final ao estado persistido antes do runtime.
+ */
 export function repairDatabase(rawState, todayKey = getLocalDateKey()) {
   const migrated = migrateIfNeeded(rawState, todayKey);
 

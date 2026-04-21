@@ -19,6 +19,10 @@ Checklist diario pessoal com treino, agua, sono e historico local.
 npm run dev
 npm run build
 npm run preview
+npm run test:fast
+npm run test:artifact
+npm run test:e2e
+npm test
 ```
 
 ## Build

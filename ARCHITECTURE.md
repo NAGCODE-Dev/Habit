@@ -2,32 +2,75 @@
 
 ## Visão geral
 
-O app é uma PWA local-first para rotina diária. O estado persistido fica em IndexedDB e é reconstruído a partir de eventos de domínio, com snapshots para reduzir replay e uma camada separada de analytics para consultas derivadas.
+O app é uma PWA local-first para rotina diária. O runtime vive em `src/app/*`, a interface continua sendo montada em HTML string a partir de componentes puros, e o estado persistido é reconstruído a partir de eventos + snapshots guardados em IndexedDB.
 
-## Blocos principais
+## Mapa do runtime
+
+- `src/main.js`
+  - bootstrap mínimo do navegador.
+- `src/app/bootstrap.js`
+  - cria o app e registra o service worker quando o ambiente permitir.
+- `src/app/createAppRuntime.js`
+  - orquestra ciclo de vida, estado, polling, render e persistência.
+- `src/app/action-handlers.js`
+  - roteia `click`, `change` e `input` por `data-action`.
+- `src/app/render*.js`
+  - monta banner, seções do dia, view de hoje e shell principal.
+- `src/App.js`
+  - fachada fina de compatibilidade sobre o runtime novo.
+
+## Fluxo principal
+
+1. O bootstrap cria o runtime e monta um estado inicial normalizado.
+2. `loadState` lê o IndexedDB e `repairDatabase` aplica migração + saneamento.
+3. `normalizeAppState` recompõe o dia atual via replay e snapshots.
+4. O runtime renderiza o shell, escuta ações delegadas e persiste novas transições.
+5. Analytics, lembretes e toasts são camadas derivadas sobre o estado já saneado.
+
+## Fronteiras de responsabilidade
 
 - `eventStore` + `eventService`
   - registram e reproduzem eventos imutáveis do domínio.
 - `dayService`
-  - aplica mutações da interface e grava novos eventos.
+  - traduz ações da interface em transições baseadas em evento.
 - `snapshotService`
-  - gera snapshots por dia e recompõe o estado atual com snapshot + delta.
+  - compacta datas antigas e recompõe dias com snapshot + delta.
 - `integrityService`
-  - migra versões de schema, saneia payloads persistidos e garante shape consistente do estado.
-- `analyticsService` + `analyticsQueryService`
-  - calculam métricas e insights sem alterar a fonte de verdade.
+  - mantém o contrato do estado persistido entre versões de schema.
+- `storageService`
+  - é a única camada que lê e grava o IndexedDB usado pelo app.
 - `notifications`
-  - controla permissão, polling em foreground e integração com service worker para lembretes de água.
+  - encapsula Notification API, service worker messaging e periodic sync.
 
-## Regras de domínio
+## Contrato do estado persistido
 
-1. A fonte de verdade é o histórico de eventos do usuário.
-2. O dia atual sempre pode ser reconstruído por replay determinístico.
-3. Snapshots são otimização de leitura, não uma segunda fonte de verdade.
-4. Analytics e lembretes são camadas derivadas; não redefinem o estado manual do dia.
+O estado salvo contém, no mínimo:
 
-## Persistência
+- `schemaVersion` e `version`
+- `currentDayKey`
+- `sectionsOpen`
+- `preferences`
+- `analyticsCache`
+- `day`
+- `events`
+- `eventIndex`
+- `snapshots`
+- `eventArchive`
+- `history`
 
-- `storageService` lê e grava o estado reparado no IndexedDB.
-- `repairDatabase` aplica migrações de schema antes do app usar o estado.
-- Ao montar, o app normaliza o conteúdo persistido e salva novamente o resultado saneado para manter o banco consistente.
+`repairDatabase` é responsável por:
+
+- aplicar migrações até o schema atual,
+- descartar campos legados que não fazem mais parte do contrato,
+- validar o shape do dia atual,
+- deduplicar eventos e histórico,
+- garantir que `day.date` acompanhe `currentDayKey`.
+
+## Testes e automação
+
+- `tests/unit/`
+  - domínio, replay, integridade, persistência e notificações.
+- `tests/artifact/`
+  - contrato do build final em `dist`.
+- `tests/e2e/`
+  - smoke tests reais de navegador com Playwright.

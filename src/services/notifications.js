@@ -3,6 +3,7 @@ import {
   WATER_REMINDER_HOURS
 } from "./constants.js";
 import { findDueReminderHour, reminderLabel } from "./date-utils.js";
+import { logOperationalWarning } from "./logger.js";
 
 export function notificationsSupported() {
   return typeof window !== "undefined" && "Notification" in window;
@@ -38,9 +39,9 @@ export async function registerBackgroundReminderSync() {
       return { supported: true, mode: "periodicSync" };
     }
   } catch (error) {
-    if (!shouldSilenceBackgroundSyncError(error)) {
-      console.warn("Background reminder sync unavailable", error);
-    }
+    logOperationalWarning("notifications/background-sync", error, {
+      silence: shouldSilenceBackgroundSyncError(error)
+    });
   }
 
   return { supported: false, mode: "foreground-only" };

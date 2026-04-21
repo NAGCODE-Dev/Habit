@@ -19,6 +19,9 @@ export function getSnapshot(state, dateKey) {
   return state?.snapshots?.[dateKey] ?? null;
 }
 
+/**
+ * Reconstrói um dia a partir do snapshot mais recente e do delta de eventos ativo.
+ */
 export function reconstructDayWithSnapshot(state, dateKey) {
   const snapshot = getSnapshot(state, dateKey);
   const activeEvents = getEventsByDate(state?.events ?? [], dateKey);
@@ -33,6 +36,9 @@ export function reconstructDayWithSnapshot(state, dateKey) {
   });
 }
 
+/**
+ * Compacta o histórico ativo de uma data em snapshot + arquivo imutável.
+ */
 export function compactDate(state, dateKey) {
   const next = {
     ...state,

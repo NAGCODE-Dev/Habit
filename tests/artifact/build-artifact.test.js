@@ -6,8 +6,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, "../../..");
+const projectRoot = path.resolve(__dirname, "../..");
 const distSrcDir = path.join(projectRoot, "dist", "src");
+const allowedPrefixes = [
+  "App.js",
+  "main.js",
+  "app/",
+  "components/",
+  "services/",
+  "styles/"
+];
 
 function listFiles(directory, root = directory) {
   const entries = readdirSync(directory, { withFileTypes: true });
@@ -26,7 +34,7 @@ function listFiles(directory, root = directory) {
   return files.sort();
 }
 
-test("build nao publica arquivos de desenvolvimento nem servicos removidos", () => {
+test("build publica apenas entradas runtime allowlisted", () => {
   execFileSync(process.execPath, ["./scripts/build.mjs"], {
     cwd: projectRoot,
     stdio: "pipe"
@@ -37,9 +45,19 @@ test("build nao publica arquivos de desenvolvimento nem servicos removidos", () 
   const files = listFiles(distSrcDir);
   assert.equal(files.includes("main.js"), true);
   assert.equal(files.includes("App.js"), true);
+  assert.equal(files.some((file) => file.startsWith("app/")), true);
   assert.equal(files.includes("services/notifications.js"), true);
 
+  for (const file of files) {
+    assert.equal(
+      allowedPrefixes.some((prefix) => file === prefix || file.startsWith(prefix)),
+      true,
+      `${file} deveria estar coberto pela allowlist runtime`
+    );
+  }
+
   const forbiddenFiles = [
+    "services/storage.js",
     "services/state.js",
     "services/googleFitService.js",
     "services/telemetryService.js",
