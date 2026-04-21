@@ -21,6 +21,11 @@ export function createStateController({
   let analyticsTimer = 0;
   let persistTimer = 0;
   let pendingPersistEntries = [];
+  let lifecycleVersion = 0;
+
+  function isStale(version) {
+    return version !== lifecycleVersion;
+  }
 
   function notifyStateChange(shouldRender) {
     if (shouldRender) {
@@ -54,21 +59,28 @@ export function createStateController({
     return state;
   }
 
-  function scheduleAnalyticsRefresh() {
+  function scheduleAnalyticsRefresh(version = lifecycleVersion) {
     windowObject.clearTimeout(analyticsTimer);
     analyticsTimer = windowObject.setTimeout(async () => {
+      if (isStale(version)) {
+        return;
+      }
+
       const nextState = refreshAnalyticsCacheImpl(state);
-      if (nextState === state) {
+      if (nextState === state || isStale(version)) {
         return;
       }
 
       state = nextState;
       await saveStateImpl(state);
+      if (isStale(version)) {
+        return;
+      }
       onStateChange(state);
     }, 0);
   }
 
-  function schedulePersist(debounceMs) {
+  function schedulePersist(debounceMs, version = lifecycleVersion) {
     const existingEntries = clearPendingPersist();
     if (existingEntries) {
       for (const entry of existingEntries) {
@@ -84,7 +96,9 @@ export function createStateController({
         persistTimer = 0;
 
         try {
-          await saveStateImpl(state);
+          if (!isStale(version)) {
+            await saveStateImpl(state);
+          }
           for (const entry of entries) {
             entry.resolve(state);
           }
@@ -102,14 +116,23 @@ export function createStateController({
       return state;
     },
     async bootstrap() {
+      const version = lifecycleVersion;
       state = normalizeAppStateImpl(null);
-      onStateChange(state);
+      if (!isStale(version)) {
+        onStateChange(state);
+      }
 
       const storedState = await loadStateImpl();
+      if (isStale(version)) {
+        return state;
+      }
       state = normalizeAppStateImpl(storedState ?? state);
       await saveStateImpl(state);
+      if (isStale(version)) {
+        return state;
+      }
       onStateChange(state);
-      scheduleAnalyticsRefresh();
+      scheduleAnalyticsRefresh(version);
 
       return state;
     },
@@ -118,22 +141,28 @@ export function createStateController({
       debounceMs = 0,
       scheduleAnalytics = true
     } = {}) {
+      const version = lifecycleVersion;
       state = normalizeAppStateImpl(nextState);
 
       if (scheduleAnalytics) {
-        scheduleAnalyticsRefresh();
+        scheduleAnalyticsRefresh(version);
       }
 
       if (debounceMs > 0) {
-        notifyStateChange(render);
-        return schedulePersist(debounceMs);
+        if (!isStale(version)) {
+          notifyStateChange(render);
+        }
+        return schedulePersist(debounceMs, version);
       }
 
       await persistCurrentState();
-      notifyStateChange(render);
+      if (!isStale(version)) {
+        notifyStateChange(render);
+      }
       return state;
     },
     async ensureCurrentDay() {
+      const version = lifecycleVersion;
       const todayKey = getTodayKey();
       if (state?.currentDayKey === todayKey && state?.day?.date === todayKey) {
         return state;
@@ -141,7 +170,9 @@ export function createStateController({
 
       state = normalizeAppStateImpl(state, todayKey);
       await persistCurrentState();
-      onStateChange(state);
+      if (!isStale(version)) {
+        onStateChange(state);
+      }
       return state;
     },
     async flushPendingPersist() {
@@ -152,6 +183,7 @@ export function createStateController({
       return persistCurrentState();
     },
     destroy() {
+      lifecycleVersion += 1;
       const pendingEntries = clearPendingPersist();
       if (pendingEntries) {
         for (const entry of pendingEntries) {

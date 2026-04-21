@@ -12,7 +12,14 @@ import { createViewController } from "./createViewController.js";
 /**
  * Monta o runtime principal a partir de controladores menores.
  */
-export function createAppRuntime(rootElement) {
+export function createAppRuntime(rootElement, {
+  createViewControllerImpl = createViewController,
+  createToastControllerImpl = createToastController,
+  createStateControllerImpl = createStateController,
+  createReminderControllerImpl = createReminderController,
+  notificationsSupportedImpl = notificationsSupported,
+  startDailyResetWatcherImpl = startDailyResetWatcher
+} = {}) {
   if (!rootElement) {
     throw new Error("App root element not found.");
   }
@@ -23,6 +30,7 @@ export function createAppRuntime(rootElement) {
     reminderMode: "foreground-only",
     isRendering: false,
     isMounted: false,
+    lifecycleVersion: 0,
     listenersAttached: false,
     mountPromise: null,
     stopResetWatcher: null,
@@ -31,18 +39,18 @@ export function createAppRuntime(rootElement) {
     handleRootInput: null
   };
 
-  const viewController = createViewController();
-  const toastController = createToastController({
+  const viewController = createViewControllerImpl();
+  const toastController = createToastControllerImpl({
     onChange: () => {
       runtime.render();
     }
   });
-  const stateController = createStateController({
+  const stateController = createStateControllerImpl({
     onStateChange: () => {
       runtime.render();
     }
   });
-  const reminderController = createReminderController({
+  const reminderController = createReminderControllerImpl({
     getState: () => stateController.getState(),
     commitState: (nextState, options) => stateController.commit(nextState, options),
     addToast: (message, tone, duration) => toastController.addToast(message, tone, duration),
@@ -172,7 +180,7 @@ export function createAppRuntime(rootElement) {
   };
 
   runtime.configureNotifications = async () => {
-    if (!notificationsSupported()) {
+    if (!notificationsSupportedImpl()) {
       return;
     }
 
@@ -189,15 +197,19 @@ export function createAppRuntime(rootElement) {
     }
 
     runtime.mountPromise = (async () => {
+      const mountVersion = runtime.lifecycleVersion;
       try {
         viewController.setActiveView(viewController.getInitialView(), { syncUrl: false });
         runtime.attachGlobalListeners();
         await stateController.bootstrap();
+        if (mountVersion !== runtime.lifecycleVersion) {
+          return;
+        }
 
         if (runtime.stopResetWatcher) {
           runtime.stopResetWatcher();
         }
-        runtime.stopResetWatcher = startDailyResetWatcher(() => {
+        runtime.stopResetWatcher = startDailyResetWatcherImpl(() => {
           void runtime.ensureCurrentDay();
         });
         void runtime.configureNotifications();
@@ -220,6 +232,7 @@ export function createAppRuntime(rootElement) {
   };
 
   runtime.destroy = () => {
+    runtime.lifecycleVersion += 1;
     runtime.isMounted = false;
     runtime.mountPromise = null;
     void runtime.flushPendingState();

@@ -154,6 +154,47 @@ test("stateController evita salvar novamente quando o dia atual já está alinha
   assert.equal(saves.length, 0);
 });
 
+test("stateController ignora efeitos tardios quando destroy ocorre durante bootstrap", async () => {
+  const timerApi = createTimerApi();
+  const renders = [];
+  const saves = [];
+  /** @type {null | ((value: any) => void)} */
+  let resolveLoadState = null;
+
+  const controller = createStateController({
+    windowObject: timerApi,
+    onStateChange: (state) => {
+      renders.push(state);
+    },
+    loadStateImpl: async () => new Promise((resolve) => {
+      resolveLoadState = resolve;
+    }),
+    saveStateImpl: async (state) => {
+      saves.push(state);
+    },
+    normalizeAppStateImpl: (state) => state ?? {
+      currentDayKey: "2026-04-21",
+      day: { date: "2026-04-21" }
+    },
+    refreshAnalyticsCacheImpl: () => {
+      throw new Error("analytics refresh should not run after destroy");
+    },
+    getTodayKey: () => "2026-04-21"
+  });
+
+  const bootstrapPromise = controller.bootstrap();
+  assert.equal(renders.length, 1);
+
+  controller.destroy();
+  assert.ok(resolveLoadState);
+  resolveLoadState(null);
+  await bootstrapPromise;
+
+  assert.equal(renders.length, 1);
+  assert.equal(saves.length, 0);
+  assert.equal(timerApi.countTimeouts(), 0);
+});
+
 test("reminderController persiste lembrete devido e usa toast no foreground", async () => {
   const timerApi = createTimerApi();
   const commits = [];
@@ -240,6 +281,194 @@ test("training-notes usa o caminho único de persistência com debounce e flush 
       scheduleAnalytics: false
     }
   ]);
+});
+
+test("createAppRuntime não ressuscita side effects após destroy durante mount pendente", async () => {
+  const originalWindow = /** @type {any} */ (globalThis.window);
+  const originalDocument = /** @type {any} */ (globalThis.document);
+  const rootAdds = new Map();
+  const rootRemoves = new Map();
+  const windowAdds = new Map();
+  const windowRemoves = new Map();
+  /** @type {null | ((value?: any) => void)} */
+  let resolveBootstrap = null;
+  let stateDestroys = 0;
+  let reminderStarts = 0;
+  let reminderDestroys = 0;
+  let configureCalls = 0;
+  let watcherStarts = 0;
+  let watcherStops = 0;
+  let toastDestroys = 0;
+
+  const count = (bucket, type) => {
+    bucket.set(type, (bucket.get(type) ?? 0) + 1);
+  };
+
+  const windowStub = /** @type {any} */ ({
+    addEventListener(type) {
+      count(windowAdds, type);
+    },
+    removeEventListener(type) {
+      count(windowRemoves, type);
+    },
+    clearTimeout() {},
+    clearInterval() {},
+    setTimeout() {
+      return 1;
+    },
+    setInterval() {
+      return 2;
+    },
+    location: {
+      href: "http://127.0.0.1:4173/"
+    },
+    history: {
+      replaceState() {}
+    }
+  });
+  const documentStub = /** @type {any} */ ({
+    hidden: false,
+    visibilityState: "visible"
+  });
+  const root = /** @type {any} */ ({
+    innerHTML: "",
+    addEventListener(type) {
+      count(rootAdds, type);
+    },
+    removeEventListener(type) {
+      count(rootRemoves, type);
+    }
+  });
+
+  const stateControllerStub = {
+    getState() {
+      return {
+        currentDayKey: "2026-04-21",
+        day: { date: "2026-04-21" }
+      };
+    },
+    async bootstrap() {
+      return new Promise((resolve) => {
+        resolveBootstrap = resolve;
+      });
+    },
+    async commit(nextState) {
+      return nextState;
+    },
+    async flushPendingPersist() {},
+    async ensureCurrentDay() {
+      return this.getState();
+    },
+    destroy() {
+      stateDestroys += 1;
+    }
+  };
+
+  try {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      writable: true,
+      value: windowStub
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      writable: true,
+      value: documentStub
+    });
+
+    const runtime = createAppRuntime(root, {
+      createViewControllerImpl: () => ({
+        getInitialView() {
+          return "today";
+        },
+        getActiveView() {
+          return "today";
+        },
+        setActiveView() {
+          return "today";
+        },
+        syncFromUrl() {
+          return "today";
+        }
+      }),
+      createToastControllerImpl: () => ({
+        getToasts() {
+          return [];
+        },
+        addToast() {
+          return "toast-id";
+        },
+        dismissToast() {},
+        destroy() {
+          toastDestroys += 1;
+        }
+      }),
+      createStateControllerImpl: () => stateControllerStub,
+      createReminderControllerImpl: () => ({
+        getReminderMode() {
+          return "foreground-only";
+        },
+        async configureNotifications() {
+          configureCalls += 1;
+          return "periodicSync";
+        },
+        start() {
+          reminderStarts += 1;
+        },
+        stop() {},
+        async checkNow() {
+          return null;
+        },
+        destroy() {
+          reminderDestroys += 1;
+        }
+      }),
+      notificationsSupportedImpl: () => true,
+      startDailyResetWatcherImpl: () => {
+        watcherStarts += 1;
+        return () => {
+          watcherStops += 1;
+        };
+      }
+    });
+
+    const mountPromise = runtime.mount();
+    runtime.destroy();
+    assert.ok(resolveBootstrap);
+    resolveBootstrap();
+    await mountPromise;
+
+    assert.equal(rootAdds.get("click"), 1);
+    assert.equal(rootAdds.get("change"), 1);
+    assert.equal(rootAdds.get("input"), 1);
+    assert.equal(rootRemoves.get("click"), 1);
+    assert.equal(rootRemoves.get("change"), 1);
+    assert.equal(rootRemoves.get("input"), 1);
+    assert.equal(windowAdds.get("beforeinstallprompt"), 1);
+    assert.equal(windowAdds.get("popstate"), 1);
+    assert.equal(windowAdds.get("pagehide"), 1);
+    assert.equal(windowRemoves.get("beforeinstallprompt"), 1);
+    assert.equal(windowRemoves.get("popstate"), 1);
+    assert.equal(windowRemoves.get("pagehide"), 1);
+    assert.equal(stateDestroys, 1);
+    assert.equal(reminderDestroys, 1);
+    assert.equal(toastDestroys, 1);
+    assert.equal(watcherStarts, 0);
+    assert.equal(watcherStops, 0);
+    assert.equal(reminderStarts, 0);
+    assert.equal(configureCalls, 0);
+  } finally {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      writable: true,
+      value: originalWindow
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      writable: true,
+      value: originalDocument
+    });
+  }
 });
 
 test("createAppRuntime ignora mount duplicado e não duplica listeners globais", async () => {

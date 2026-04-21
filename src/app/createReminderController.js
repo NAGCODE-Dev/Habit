@@ -31,6 +31,11 @@ export function createReminderController({
 }) {
   let reminderMode = "foreground-only";
   let reminderInterval = 0;
+  let lifecycleVersion = 0;
+
+  function isStale(version) {
+    return version !== lifecycleVersion;
+  }
 
   function stopPolling() {
     windowObject.clearInterval(reminderInterval);
@@ -38,6 +43,7 @@ export function createReminderController({
   }
 
   async function checkNow(date = new Date()) {
+    const version = lifecycleVersion;
     const state = getState();
     if (!state?.day) {
       return null;
@@ -51,6 +57,9 @@ export function createReminderController({
 
     const nextState = markReminderSentImpl(state, dueHour);
     await commitState(nextState, { render: true });
+    if (isStale(version)) {
+      return null;
+    }
 
     const currentState = getState();
     const title = `Água ${String(dueHour).padStart(2, "0")}:00`;
@@ -74,11 +83,15 @@ export function createReminderController({
       return reminderMode;
     },
     async configureNotifications() {
+      const version = lifecycleVersion;
       if (!notificationsSupportedImpl()) {
         return reminderMode;
       }
 
       const result = await registerBackgroundReminderSyncImpl();
+      if (isStale(version)) {
+        return reminderMode;
+      }
       reminderMode = result.mode;
       onModeChange(reminderMode);
       return reminderMode;
@@ -95,6 +108,7 @@ export function createReminderController({
     },
     checkNow,
     destroy() {
+      lifecycleVersion += 1;
       stopPolling();
     }
   };
