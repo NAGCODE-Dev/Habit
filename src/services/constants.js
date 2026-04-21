@@ -1,5 +1,6 @@
 export const APP_NAME = "Rotina";
 export const WATER_GOAL_ML = 3000;
+export const MAX_WATER_SINGLE_ENTRY_ML = 5000;
 export const WATER_PRESET_AMOUNTS = [250, 500, 1000];
 export const WATER_REMINDER_HOURS = [8, 10, 12, 14, 16, 18, 20];
 export const DB_NAME = "habit-athlete-pwa";

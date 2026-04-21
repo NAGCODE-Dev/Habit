@@ -133,3 +133,31 @@ test('addWater impõe limite superior para evitar payload anômalo', () => {
   const state = addWater(base, 6000);
   assert.equal(state.day.water.total, 0);
 });
+
+test('reduceEvents ignora eventos históricos inválidos durante replay', () => {
+  const date = '2026-04-21';
+  const replay = reduceEvents([
+    { id: 'bad-water', date, type: EVENT_TYPES.WATER_ADDED, payload: { amount: 90000, id: 'w-bad' }, timestamp: 1 },
+    { id: 'bad-meal', date, type: EVENT_TYPES.MEAL_TIME_SET, payload: { mealId: 'lunch', value: '99:99' }, timestamp: 2 },
+    { id: 'ok-water', date, type: EVENT_TYPES.WATER_ADDED, payload: { amount: 300, id: 'w-ok' }, timestamp: 3 }
+  ], date);
+
+  assert.equal(replay.water.total, 300);
+  assert.equal(replay.meals.lunch, '');
+});
+
+test('repairDatabase sanitiza telemetryShadow do Google Fit', () => {
+  const date = '2026-04-21';
+  const repaired = repairDatabase({
+    currentDayKey: date,
+    telemetryShadow: {
+      googleFit: {
+        [date]: { steps: '1200', hydrationMl: -10, activeMinutes: 30 }
+      }
+    }
+  }, date);
+
+  assert.equal(repaired.telemetryShadow.googleFit[date].steps, 1200);
+  assert.equal(repaired.telemetryShadow.googleFit[date].hydrationMl, 0);
+  assert.equal(repaired.telemetryShadow.googleFit[date].activeMinutes, 30);
+});
