@@ -4,6 +4,7 @@ const DB_NAME = "habit-athlete-pwa";
 const DB_VERSION = 1;
 const DB_STORE = "kv";
 const APP_STATE_KEY = "app-state";
+const APP_STATE_BACKUP_KEY = "app-state-backup";
 const WATER_GOAL_ML = 3000;
 const WATER_REMINDER_HOURS = [8, 10, 12, 14, 16, 18, 20];
 
@@ -44,9 +45,11 @@ async function saveState(state) {
     await new Promise((resolve, reject) => {
       const transaction = database.transaction(DB_STORE, "readwrite");
       const store = transaction.objectStore(DB_STORE);
-      const request = store.put(state, APP_STATE_KEY);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      store.put(state, APP_STATE_KEY);
+      store.put(state, APP_STATE_BACKUP_KEY);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
     });
   } catch {
     return null;
@@ -77,32 +80,71 @@ function dueReminderHour(date, sentHours) {
   return due.length ? due[due.length - 1] : null;
 }
 
+function getWaterTotal(day) {
+  const amount = day?.water && typeof day.water === "object"
+    ? day.water.total
+    : day?.waterTotalMl;
+
+  const safeAmount = Math.round(Number(amount ?? 0));
+  return Number.isFinite(safeAmount) ? Math.max(0, safeAmount) : 0;
+}
+
+function getReminderSentHours(day) {
+  const rawHours = Array.isArray(day?.water?.reminderSentHours)
+    ? day.water.reminderSentHours
+    : Array.isArray(day?.reminderSentHours)
+      ? day.reminderSentHours
+      : [];
+
+  return [...new Set(
+    rawHours
+      .map((hour) => Math.round(Number(hour)))
+      .filter((hour) => Number.isFinite(hour) && hour >= 0 && hour <= 23)
+  )].sort((left, right) => left - right);
+}
+
+function assignReminderSentHours(day, sentHours) {
+  if (!day || typeof day !== "object") {
+    return;
+  }
+
+  if (day.water && typeof day.water === "object") {
+    day.water.reminderSentHours = sentHours;
+    delete day.reminderSentHours;
+    return;
+  }
+
+  day.reminderSentHours = sentHours;
+}
+
 async function maybeSendWaterReminder() {
   const state = await readState();
   if (!state?.day || state.currentDayKey !== getTodayKey()) {
     return;
   }
 
-  if (Number(state.day.waterTotalMl ?? 0) >= WATER_GOAL_ML) {
+  const waterTotalMl = getWaterTotal(state.day);
+  if (waterTotalMl >= WATER_GOAL_ML) {
     return;
   }
 
-  const hour = dueReminderHour(new Date(), state.day.reminderSentHours ?? []);
+  const sentHours = getReminderSentHours(state.day);
+  const hour = dueReminderHour(new Date(), sentHours);
   if (hour === null) {
     return;
   }
 
-  const sent = new Set(state.day.reminderSentHours ?? []);
-  sent.add(hour);
-  state.day.reminderSentHours = [...sent].sort((left, right) => left - right);
-  await saveState(state);
-
   await self.registration.showNotification(`Agua ${String(hour).padStart(2, "0")}:00`, {
-    body: `Hora de beber agua. Hoje: ${state.day.waterTotalMl ?? 0} / ${WATER_GOAL_ML} ml.`,
+    body: `Hora de beber agua. Hoje: ${waterTotalMl} / ${WATER_GOAL_ML} ml.`,
     tag: `water-${state.currentDayKey}-${hour}`,
     badge: "./icons/icon-192.png",
     icon: "./icons/icon-192.png"
   });
+
+  const sent = new Set(sentHours);
+  sent.add(hour);
+  assignReminderSentHours(state.day, [...sent].sort((left, right) => left - right));
+  await saveState(state);
 }
 
 self.addEventListener("install", (event) => {
