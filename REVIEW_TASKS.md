@@ -1,31 +1,49 @@
-# Revisão da base de código: tarefas sugeridas
+# Revisão da base de código: tarefas sugeridas (atualizada)
 
-## 1) Erro de digitação/texto (copy)
-**Tarefa sugerida:** padronizar a escrita da interface para português com acentuação correta (ex.: "Diferenca" -> "Diferença", "amanha" -> "amanhã", "agua" -> "água"), começando pela mensagem de desvio de horário.
+## 1) Erro de digitação / copy (UI)
+**Tarefa:** corrigir textos sem acentuação em mensagens para o usuário, começando por:
+- `"Digite uma quantidade valida em ml."` -> `"Digite uma quantidade válida em ml."`
 
-- Referência principal: `src/services/date-utils.js` (`diffNotice`).
-- Impacto: melhora clareza e percepção de qualidade sem alterar regra de negócio.
+**Referência:** `src/App.js` (toast de validação do input de água manual).
 
-## 2) Correção de bug funcional
-**Tarefa sugerida:** implementar a regra de negócio indicada para limite de "pular corrida" em até 2 vezes por semana.
+---
 
-- Hoje existe apenas dica visual no app, sem validação real.
-- Referência principal: `src/App.js` (hint em "Pular hoje") e fluxo de toggle no estado.
-- Impacto: evita inconsistência entre comportamento esperado e comportamento real.
+## 2) Correção de bug (analytics cache não usado)
+**Tarefa:** evitar recomputar analytics em toda normalização de estado.
 
-## 3) Ajuste de documentação / discrepância
-**Tarefa sugerida:** atualizar o `README.md` para documentar o comando de desenvolvimento (`npm run dev`) que já existe no `package.json`.
+**Problema observado:** `normalizeAppState` chama `refreshAnalyticsCache` sempre, ignorando o caminho de cache (`getCachedAnalytics`) e degradando performance em uso intenso.
 
-- Referências: `README.md` (seção de comandos) e `package.json` (script `dev`).
-- Impacto: reduz atrito de onboarding e elimina inconsistência entre docs e scripts reais.
+**Proposta:** usar estratégia:
+1. tentar `getCachedAnalytics(state)`;
+2. só recalcular se TTL expirou ou se `eventIndex.lastEventId` mudou.
 
-## 4) Melhoria de teste
-**Tarefa sugerida:** criar testes unitários para lógica de lembrete de água e casos de borda de horário.
+**Referências:**
+- `src/services/dayService.js` (`normalizeAppState`)
+- `src/services/analyticsService.js` (`getCachedAnalytics`, `refreshAnalyticsCache`)
 
-- Referência principal: `src/services/date-utils.js` (`findDueReminderHour`).
-- Casos mínimos:
-  - não dispara para hora já enviada;
-  - dispara apenas dentro da janela [HH:00, HH:59];
-  - retorna o lembrete mais recente quando mais de um horário estiver em atraso;
-  - retorna `null` quando não há lembrete devido.
-- Impacto: reduz regressões em uma regra temporal sensível.
+---
+
+## 3) Ajuste de comentário/discrepância de documentação
+**Tarefa:** documentar no `README.md` a arquitetura atual (event sourcing + snapshot + compaction + analytics), pois a documentação ainda descreve majoritariamente comportamento funcional e comandos, sem refletir a camada de dados introduzida.
+
+**Referências:**
+- `README.md`
+- `src/services/eventService.js`
+- `src/services/snapshotService.js`
+- `src/services/analyticsService.js`
+
+---
+
+## 4) Melhoria de teste (regressão crítica de replay)
+**Tarefa:** criar testes unitários para replay incremental com snapshot.
+
+**Casos mínimos sugeridos:**
+1. `reduceEvents(..., { baseDay, startAfterEventId })` deve aplicar apenas delta após `lastEventId`;
+2. `compactDate` deve gerar snapshot e mover eventos para `eventArchive` sem perder reconstrução final;
+3. `reconstructDayWithSnapshot` deve retornar o mesmo resultado do replay completo (consistência de estado);
+4. migração `v5 -> v6` deve manter dados e apenas normalizar `analyticsCache`.
+
+**Referências:**
+- `src/services/eventService.js`
+- `src/services/snapshotService.js`
+- `src/services/integrityService.js`

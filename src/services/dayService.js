@@ -13,7 +13,6 @@ import { appendEvent } from "./eventStore.js";
 import { EVENT_TYPES } from "./eventService.js";
 import { buildEventIndex } from "./eventStore.js";
 import { compactDate, reconstructDayWithSnapshot } from "./snapshotService.js";
-import { refreshAnalyticsCache } from "./analyticsService.js";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -23,16 +22,26 @@ export function createDefaultDay(dateKey) {
   return validateDay(createSafeDayTemplate(dateKey), dateKey);
 }
 
-export function normalizeAppState(rawState, todayKey = getLocalDateKey()) {
+function runIntegrityStage(rawState, todayKey) {
   const repaired = repairDatabase(rawState, todayKey);
   repaired.day = reconstructDayWithSnapshot(repaired, repaired.currentDayKey);
-  const rotated = rotateHistoryToDate(repaired, createDefaultDay, todayKey);
+  return repaired;
+}
+
+function runStateStage(repairedState, todayKey) {
+  const rotated = rotateHistoryToDate(repairedState, createDefaultDay, todayKey);
   rotated.day = reconstructDayWithSnapshot(rotated, rotated.currentDayKey);
   const compacted = compactDate(rotated, rotated.currentDayKey);
   compacted.day = reconstructDayWithSnapshot(compacted, compacted.currentDayKey);
   compacted.eventIndex = buildEventIndex(compacted.events ?? []);
   compacted.day = validateDay(compacted.day, compacted.currentDayKey);
-  return refreshAnalyticsCache(compacted);
+  return compacted;
+}
+
+export function normalizeAppState(rawState, todayKey = getLocalDateKey()) {
+  const integrityState = runIntegrityStage(rawState, todayKey);
+  const stateStage = runStateStage(integrityState, todayKey);
+  return stateStage;
 }
 
 function withProgress(state) {

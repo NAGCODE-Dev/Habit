@@ -45,6 +45,14 @@ npm run dev
 
 Abre em `http://localhost:4173` servindo a raiz do projeto.
 
+## Arquitetura de dados (resumo)
+
+- Fonte de verdade: eventos em IndexedDB.
+- Reconstrucao do dia: replay de eventos com suporte a snapshot + delta.
+- Compactacao: snapshots por dia para reduzir replay completo frequente.
+- Integridade: migracoes e saneamento de estado por versao de schema.
+- Analytics: camada separada de query + metricas + insights, com cache.
+
 ## GitHub + Vercel
 
 O projeto ja esta preparado para esse fluxo:

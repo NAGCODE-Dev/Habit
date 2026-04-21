@@ -170,7 +170,8 @@ function sanitizeAnalyticsCache(rawCache) {
 
   return {
     payload: rawCache.payload ?? null,
-    lastComputed: Math.max(0, Math.floor(safeNumber(rawCache.lastComputed, 0)))
+    lastComputed: Math.max(0, Math.floor(safeNumber(rawCache.lastComputed, 0))),
+    cacheKey: typeof rawCache.cacheKey === "string" ? rawCache.cacheKey : ""
   };
 }
 

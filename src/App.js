@@ -1,4 +1,5 @@
 import { renderCheckboxField } from "./components/CheckboxField.js";
+import { renderAnalyticsDashboard } from "./components/AnalyticsDashboard.js";
 import { renderHistoryView } from "./components/HistoryView.js";
 import { renderProgressHeader } from "./components/ProgressHeader.js";
 import { renderSectionCard } from "./components/SectionCard.js";
@@ -41,6 +42,7 @@ import {
   updateTrainingNotes
 } from "./services/dayService.js";
 import { computeProgress, summarizeDay } from "./services/historyService.js";
+import { getDashboardAnalytics, refreshAnalyticsCache } from "./services/analyticsService.js";
 import { loadState, saveState } from "./services/storageService.js";
 
 function mealRow(meal, checked, timeValue) {
@@ -77,6 +79,7 @@ export class HabitApp {
     this.reminderMode = "foreground-only";
     this.reminderInterval = 0;
     this.isRendering = false;
+    this.analyticsTimer = 0;
   }
 
   getInitialView() {
@@ -105,6 +108,7 @@ export class HabitApp {
     this.state = normalizeAppState(storedState ?? this.state);
     void saveState(this.state);
     this.render();
+    this.scheduleAnalyticsRefresh();
 
     void this.configureNotifications();
     this.startReminderPolling();
@@ -113,6 +117,7 @@ export class HabitApp {
 
   destroy() {
     window.clearInterval(this.reminderInterval);
+    window.clearTimeout(this.analyticsTimer);
     window.removeEventListener("beforeinstallprompt", this.handleBeforeInstallPrompt);
   }
 
@@ -161,6 +166,21 @@ export class HabitApp {
     if (render) {
       this.render();
     }
+    this.scheduleAnalyticsRefresh();
+  }
+
+  scheduleAnalyticsRefresh() {
+    window.clearTimeout(this.analyticsTimer);
+    this.analyticsTimer = window.setTimeout(async () => {
+      const nextState = refreshAnalyticsCache(this.state);
+      if (nextState === this.state) {
+        return;
+      }
+
+      this.state = nextState;
+      await saveState(this.state);
+      this.render();
+    }, 0);
   }
 
   addToast(message, tone = "info", duration = 3200) {
@@ -248,7 +268,7 @@ export class HabitApp {
       const input = this.root.querySelector("#manual-water-amount");
       const amount = Number(input?.value ?? 0);
       if (!Number.isFinite(amount) || amount <= 0) {
-        this.addToast("Digite uma quantidade valida em ml.", "warning");
+        this.addToast("Digite uma quantidade válida em ml.", "warning");
         return;
       }
 
@@ -583,9 +603,15 @@ export class HabitApp {
 
   renderTodayView() {
     const day = getLegacyDaySnapshot(this.state.day);
+    const currentSummary = summarizeDay(this.state.day);
     const remainingWater = Math.max(0, WATER_GOAL_ML - day.waterTotalMl);
     return `
       ${this.renderReminderBanner()}
+      ${renderAnalyticsDashboard({
+        analytics: getDashboardAnalytics(this.state),
+        history: this.state.history,
+        currentSummary
+      })}
       ${renderWaterTracker(day)}
 
       <section class="summary-card">
