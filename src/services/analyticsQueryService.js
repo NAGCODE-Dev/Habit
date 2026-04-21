@@ -112,8 +112,9 @@ export function getAllDays(state) {
     const snapshot = getSnapshot(state, dateKey);
     const events = getDailyEvents(state, dateKey);
 
-    if (historyEntry && !snapshot && events.length === 0) {
-      return applyHistorySummary(createSafeDayTemplate(dateKey), historyEntry);
+    if (historyEntry && events.length === 0) {
+      const baseDay = snapshot?.state ? snapshot.state : createSafeDayTemplate(dateKey);
+      return applyHistorySummary(baseDay, historyEntry);
     }
 
     const reducedDay = snapshot
