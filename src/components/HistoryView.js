@@ -137,11 +137,11 @@ export function renderHistoryView(history, currentEntry) {
   const firstTrackedDate = mergedEntries[mergedEntries.length - 1]?.dateKey ?? currentEntry?.dateKey ?? "";
 
   return `
-    <section class="history-layout">
+    <section class="history-layout" data-testid="history-view">
       <section class="history-overview-card">
         <div>
           <p class="eyebrow">Histórico</p>
-          <h2>Calendário</h2>
+          <h2 data-testid="history-title">Calendário</h2>
         </div>
         <p class="support-copy">Cada dia fica com uma cor pela porcentagem concluída.</p>
         <div class="calendar-legend">

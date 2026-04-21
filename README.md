@@ -22,6 +22,7 @@ npm run preview
 npm run test:fast
 npm run test:artifact
 npm run test:e2e
+npm run test:e2e:headed
 npm test
 ```
 
@@ -32,6 +33,8 @@ npm run build
 ```
 
 Gera `dist/` com tudo pronto para deploy estatico.
+
+O contrato do build fica centralizado em `scripts/runtime-manifest.json`, usado tanto pelo build quanto pelo teste de artefato.
 
 ## Preview
 

@@ -5,33 +5,26 @@ const DB_STORE = "kv";
 const APP_STATE_KEY = "app-state";
 const APP_STATE_BACKUP_KEY = "app-state-backup";
 
-async function writeAppState(page, state) {
-  await page.evaluate(async ({ state, dbName, storeName, primaryKey, backupKey }) => {
-    await new Promise((resolve, reject) => {
-      const request = indexedDB.open(dbName, 1);
+async function seedAppStateOnBoot(page, state) {
+  await page.addInitScript(({ seededState, dbName, storeName, primaryKey, backupKey }) => {
+    const request = indexedDB.open(dbName, 1);
 
-      request.onupgradeneeded = () => {
-        const database = request.result;
-        if (!database.objectStoreNames.contains(storeName)) {
-          database.createObjectStore(storeName);
-        }
-      };
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(storeName)) {
+        database.createObjectStore(storeName);
+      }
+    };
 
-      request.onsuccess = () => {
-        const database = request.result;
-        const transaction = database.transaction(storeName, "readwrite");
-        const store = transaction.objectStore(storeName);
-        store.put(state, primaryKey);
-        store.put(state, backupKey);
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
-        transaction.onabort = () => reject(transaction.error);
-      };
-
-      request.onerror = () => reject(request.error);
-    });
+    request.onsuccess = () => {
+      const database = request.result;
+      const transaction = database.transaction(storeName, "readwrite");
+      const store = transaction.objectStore(storeName);
+      store.put(seededState, primaryKey);
+      store.put(seededState, backupKey);
+    };
   }, {
-    state,
+    seededState: state,
     dbName: DB_NAME,
     storeName: DB_STORE,
     primaryKey: APP_STATE_KEY,
@@ -78,8 +71,8 @@ test.beforeEach(async ({ page }) => {
 test("carrega a home com header, hidratação e seções visíveis", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Rotina" })).toBeVisible();
-  await expect(page.getByText("Hidratação", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("app-title")).toBeVisible();
+  await expect(page.getByTestId("water-card")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sono" })).toBeVisible();
   await expect(page.getByText("Treino principal (15h - 17h/18h)")).toBeVisible();
 });
@@ -88,17 +81,17 @@ test("adiciona água por preset e persiste após reload", async ({ page }) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "+250 ml" }).click();
-  await expect(page.getByRole("heading", { name: /250 ml \/ 3\.000 ml/ })).toBeVisible();
+  await expect(page.getByTestId("water-total")).toHaveText("250 ml / 3.000 ml");
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: /250 ml \/ 3\.000 ml/ })).toBeVisible();
+  await expect(page.getByTestId("water-total")).toHaveText("250 ml / 3.000 ml");
 });
 
 test("água manual inválida mostra toast de erro", async ({ page }) => {
   await page.goto("/");
 
-  await page.locator("#manual-water-amount").fill("0");
-  await page.getByRole("button", { name: "Adicionar" }).click();
+  await page.getByTestId("manual-water-input").fill("0");
+  await page.getByTestId("manual-water-submit").click();
 
   await expect(page.getByText("Digite uma quantidade válida em ml.")).toBeVisible();
 });
@@ -106,34 +99,27 @@ test("água manual inválida mostra toast de erro", async ({ page }) => {
 test("troca para histórico e reflete a URL", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Histórico" }).click();
+  await page.getByTestId("tab-history").click();
   await expect(page).toHaveURL(/view=history/);
-  await expect(page.getByRole("heading", { name: "Calendário" })).toBeVisible();
+  await expect(page.getByTestId("history-title")).toBeVisible();
 });
 
 test("dispensa prompt de lembrete e mantém a preferência após reload", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Agora não" }).click();
-  await expect(page.getByRole("button", { name: "Agora não" })).toHaveCount(0);
+  await page.getByTestId("reminder-dismiss").click();
+  await expect(page.getByTestId("reminder-dismiss")).toHaveCount(0);
 
   await page.reload();
-  await expect(page.getByRole("button", { name: "Agora não" })).toHaveCount(0);
+  await expect(page.getByTestId("reminder-dismiss")).toHaveCount(0);
 });
 
 test("boot com estado legado remove telemetryShadow e mantém o app funcional", async ({ page }) => {
-  await page.goto("/");
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-  const { todayKey, now } = await page.evaluate(() => {
-    const now = new Date();
-    const pad = (value) => String(value).padStart(2, "0");
-    return {
-      todayKey: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-      now: now.toISOString()
-    };
-  });
-
-  await writeAppState(page, {
+  await seedAppStateOnBoot(page, {
     version: 6,
     schemaVersion: 6,
     currentDayKey: todayKey,
@@ -154,13 +140,13 @@ test("boot com estado legado remove telemetryShadow e mantém o app funcional", 
                 {
                   id: "seed-water",
                   amount: 400,
-                  timestamp: now
+                  timestamp: now.toISOString()
                 }
               ]
             }
           }
         },
-        timestamp: Date.parse(now)
+        timestamp: now.getTime()
       }
     ],
     eventIndex: {
@@ -179,10 +165,10 @@ test("boot com estado legado remove telemetryShadow e mantém o app funcional", 
     }
   });
 
-  await page.reload();
+  await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Rotina" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /400 ml \/ 3\.000 ml/ })).toBeVisible();
+  await expect(page.getByTestId("app-title")).toBeVisible();
+  await expect(page.getByTestId("water-total")).toHaveText("400 ml / 3.000 ml");
 
   const state = await readAppState(page);
   expect(state.telemetryShadow).toBeUndefined();

@@ -11,9 +11,17 @@ O app é uma PWA local-first para rotina diária. O runtime vive em `src/app/*`,
 - `src/app/bootstrap.js`
   - cria o app e registra o service worker quando o ambiente permitir.
 - `src/app/createAppRuntime.js`
-  - orquestra ciclo de vida, estado, polling, render e persistência.
+  - orquestra ciclo de vida, conectando controladores de estado, view, toast e lembretes.
+- `src/app/createStateController.js`
+  - centraliza load/save, normalização, debounce de persistência e refresh de analytics.
+- `src/app/createViewController.js`
+  - sincroniza `today/history` com a URL.
+- `src/app/createToastController.js`
+  - controla fila e expiração dos toasts.
+- `src/app/createReminderController.js`
+  - encapsula polling, foreground toast e notificação via service worker.
 - `src/app/action-handlers.js`
-  - roteia `click`, `change` e `input` por `data-action`.
+  - roteia `click`, `change` e `input` por `data-action`, sempre usando o mesmo caminho de persistência.
 - `src/app/render*.js`
   - monta banner, seções do dia, view de hoje e shell principal.
 - `src/App.js`
@@ -41,6 +49,8 @@ O app é uma PWA local-first para rotina diária. O runtime vive em `src/app/*`,
   - é a única camada que lê e grava o IndexedDB usado pelo app.
 - `notifications`
   - encapsula Notification API, service worker messaging e periodic sync.
+- `scripts/runtime-manifest.json`
+  - define a allowlist oficial do runtime publicado em `dist/src`.
 
 ## Contrato do estado persistido
 
@@ -69,7 +79,7 @@ O estado salvo contém, no mínimo:
 ## Testes e automação
 
 - `tests/unit/`
-  - domínio, replay, integridade, persistência e notificações.
+  - domínio, replay, integridade, persistência, notificações e controladores do runtime.
 - `tests/artifact/`
   - contrato do build final em `dist`.
 - `tests/e2e/`

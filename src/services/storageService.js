@@ -1,3 +1,5 @@
+// @ts-check
+
 import {
   DB_APP_STATE_BACKUP_KEY,
   DB_APP_STATE_KEY,
@@ -61,7 +63,12 @@ export async function loadState() {
     const rawState = await readRawState();
     return repairDatabase(rawState, getLocalDateKey());
   } catch (error) {
-    logOperationalError("storage/load", error);
+    logOperationalError("storage/load", error, {
+      context: {
+        dbName: DB_NAME,
+        store: DB_STORE
+      }
+    });
     return repairDatabase(null, getLocalDateKey());
   }
 }
@@ -83,6 +90,11 @@ export async function saveState(state) {
       transaction.onabort = () => reject(transaction.error);
     });
   } catch (error) {
-    logOperationalError("storage/save", error);
+    logOperationalError("storage/save", error, {
+      context: {
+        dbName: DB_NAME,
+        store: DB_STORE
+      }
+    });
   }
 }

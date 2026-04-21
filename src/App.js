@@ -1,3 +1,5 @@
+// @ts-check
+
 import { createAppRuntime } from "./app/createAppRuntime.js";
 
 export class HabitApp {

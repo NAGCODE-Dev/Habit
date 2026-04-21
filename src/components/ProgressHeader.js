@@ -13,11 +13,11 @@ export function renderProgressHeader({
   const progressWidth = `${percentage}%`;
 
   return `
-    <header class="hero-card">
+    <header class="hero-card" data-testid="progress-header">
       <div class="hero-topline">
         <div>
           <p class="eyebrow">${escapeHtml(dateLabel)}</p>
-          <h1>${escapeHtml(APP_NAME)}</h1>
+          <h1 data-testid="app-title">${escapeHtml(APP_NAME)}</h1>
         </div>
         <div class="hero-pill">${percentage}%</div>
       </div>
@@ -39,11 +39,11 @@ export function renderProgressHeader({
       </div>
 
       <div class="hero-actions">
-        <button class="tab-button ${activeView === "today" ? "is-active" : ""}" type="button" data-action="switch-view" data-view="today">Hoje</button>
-        <button class="tab-button ${activeView === "history" ? "is-active" : ""}" type="button" data-action="switch-view" data-view="history">Histórico</button>
+        <button class="tab-button ${activeView === "today" ? "is-active" : ""}" type="button" data-action="switch-view" data-view="today" data-testid="tab-today">Hoje</button>
+        <button class="tab-button ${activeView === "history" ? "is-active" : ""}" type="button" data-action="switch-view" data-view="history" data-testid="tab-history">Histórico</button>
         ${
           installAvailable
-            ? '<button class="ghost-button" type="button" data-action="install-app">Tela inicial</button>'
+            ? '<button class="ghost-button" type="button" data-action="install-app" data-testid="install-app-button">Tela inicial</button>'
             : ""
         }
       </div>

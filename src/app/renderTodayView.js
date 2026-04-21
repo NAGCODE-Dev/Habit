@@ -1,3 +1,5 @@
+// @ts-check
+
 import { renderAnalyticsDashboard } from "../components/AnalyticsDashboard.js";
 import { renderWaterTracker } from "../components/WaterTracker.js";
 import { WATER_GOAL_ML } from "../services/constants.js";
@@ -15,28 +17,30 @@ export function renderTodayView(state, reminderMode) {
   const remainingWater = Math.max(0, WATER_GOAL_ML - day.waterTotalMl);
 
   return `
-    ${renderReminderBanner(state, reminderMode)}
-    ${renderAnalyticsDashboard({
-      analytics: getDashboardAnalytics(state),
-      history: state.history,
-      currentSummary
-    })}
-    ${renderWaterTracker(day)}
+    <div data-testid="today-view">
+      ${renderReminderBanner(state, reminderMode)}
+      ${renderAnalyticsDashboard({
+        analytics: getDashboardAnalytics(state),
+        history: state.history,
+        currentSummary
+      })}
+      ${renderWaterTracker(day)}
 
-    <section class="summary-card">
-      <div class="summary-line">
-        <span>Água restante</span>
-        <strong>${formatMl(remainingWater)}</strong>
-      </div>
-      <div class="summary-line">
-        <span>Horários de lembrete</span>
-        <strong>${escapeHtml(reminderScheduleText())}</strong>
-      </div>
-    </section>
+      <section class="summary-card">
+        <div class="summary-line">
+          <span>Água restante</span>
+          <strong>${formatMl(remainingWater)}</strong>
+        </div>
+        <div class="summary-line">
+          <span>Horários de lembrete</span>
+          <strong>${escapeHtml(reminderScheduleText())}</strong>
+        </div>
+      </section>
 
-    ${renderMorningSection(state)}
-    ${renderSchoolSection(state)}
-    ${renderAfternoonSection(state)}
-    ${renderNightSection(state)}
+      ${renderMorningSection(state)}
+      ${renderSchoolSection(state)}
+      ${renderAfternoonSection(state)}
+      ${renderNightSection(state)}
+    </div>
   `;
 }

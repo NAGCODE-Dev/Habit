@@ -1,3 +1,5 @@
+// @ts-check
+
 import { renderHistoryView } from "../components/HistoryView.js";
 import { renderProgressHeader } from "../components/ProgressHeader.js";
 import { renderToastStack } from "../components/ToastStack.js";

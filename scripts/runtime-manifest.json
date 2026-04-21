@@ -1,0 +1,31 @@
+{
+  "copyEntries": [
+    ["src/main.js", "src/main.js"],
+    ["src/App.js", "src/App.js"],
+    ["src/app", "src/app"],
+    ["src/components", "src/components"],
+    ["src/services", "src/services"],
+    ["src/styles", "src/styles"]
+  ],
+  "allowedPrefixes": [
+    "App.js",
+    "main.js",
+    "app/",
+    "components/",
+    "services/",
+    "styles/"
+  ],
+  "blockedFiles": [
+    "src/services/storage.js"
+  ],
+  "forbiddenFiles": [
+    "services/storage.js",
+    "services/state.js",
+    "services/googleFitService.js",
+    "services/telemetryService.js",
+    "services/healthModelService.js"
+  ],
+  "blockedDirectories": [
+    "__tests__"
+  ]
+}

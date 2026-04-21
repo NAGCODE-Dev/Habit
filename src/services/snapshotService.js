@@ -1,3 +1,5 @@
+// @ts-check
+
 import { reduceEvents } from "./eventService.js";
 import { getEventsByDate } from "./eventStore.js";
 import { validateDay } from "./integrityService.js";

@@ -1,3 +1,5 @@
+// @ts-check
+
 import {
   WATER_GOAL_ML,
   WATER_REMINDER_HOURS
@@ -40,7 +42,11 @@ export async function registerBackgroundReminderSync() {
     }
   } catch (error) {
     logOperationalWarning("notifications/background-sync", error, {
-      silence: shouldSilenceBackgroundSyncError(error)
+      silence: shouldSilenceBackgroundSyncError(error),
+      context: {
+        notificationsSupported: notificationsSupported(),
+        serviceWorkerSupported: "serviceWorker" in navigator
+      }
     });
   }
 

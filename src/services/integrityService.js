@@ -1,3 +1,5 @@
+// @ts-check
+
 import {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_SECTION_OPEN,

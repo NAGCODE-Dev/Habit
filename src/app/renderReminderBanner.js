@@ -1,3 +1,5 @@
+// @ts-check
+
 import { escapeHtml } from "../services/dom-utils.js";
 import {
   notificationPermissionState,
@@ -42,8 +44,8 @@ export function renderReminderBanner(state, reminderMode) {
         <p class="support-copy">Avisos às 8h, 10h, 12h, 14h, 16h, 18h e 20h. Se o navegador deixar, eles também rodam pelo service worker.</p>
       </div>
       <div class="notice-actions">
-        <button type="button" class="action-button accent" data-action="request-notifications">Permitir</button>
-        <button type="button" class="ghost-button" data-action="dismiss-reminder-prompt">Agora não</button>
+        <button type="button" class="action-button accent" data-action="request-notifications" data-testid="reminder-allow">Permitir</button>
+        <button type="button" class="ghost-button" data-action="dismiss-reminder-prompt" data-testid="reminder-dismiss">Agora não</button>
       </div>
     </section>
   `;

@@ -12,11 +12,11 @@ export function renderWaterTracker(day) {
     : `${WATER_GOAL_ML - day.waterTotalMl} ml restantes para fechar o dia.`;
 
   return `
-    <section class="water-card">
+    <section class="water-card" data-testid="water-card">
       <div class="water-header">
         <div>
           <p class="eyebrow">Hidratação</p>
-          <h2>${formatMl(day.waterTotalMl)} / ${formatMl(WATER_GOAL_ML)}</h2>
+          <h2 data-testid="water-total">${formatMl(day.waterTotalMl)} / ${formatMl(WATER_GOAL_ML)}</h2>
         </div>
         <div class="water-pill">${percent}%</div>
       </div>
@@ -46,6 +46,7 @@ export function renderWaterTracker(day) {
           <span class="field-label">Quantidade manual</span>
           <input
             id="manual-water-amount"
+            data-testid="manual-water-input"
             class="text-input"
             type="number"
             inputmode="numeric"
@@ -53,7 +54,7 @@ export function renderWaterTracker(day) {
             placeholder="Ex: 330"
           />
         </label>
-        <button type="button" class="action-button accent" data-action="add-water-manual">Adicionar</button>
+        <button type="button" class="action-button accent" data-action="add-water-manual" data-testid="manual-water-submit">Adicionar</button>
       </div>
 
       <div class="water-footer">

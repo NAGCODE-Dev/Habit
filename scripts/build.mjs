@@ -7,18 +7,11 @@ import "./generate-assets.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
-const srcDir = path.join(rootDir, "src");
-const RUNTIME_COPY_ENTRIES = [
-  ["src/main.js", "src/main.js"],
-  ["src/App.js", "src/App.js"],
-  ["src/app", "src/app"],
-  ["src/components", "src/components"],
-  ["src/services", "src/services"],
-  ["src/styles", "src/styles"]
-];
-const BLOCKED_RUNTIME_FILES = new Set([
-  "src/services/storage.js"
-]);
+const manifestPath = path.join(__dirname, "runtime-manifest.json");
+const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const RUNTIME_COPY_ENTRIES = manifest.copyEntries;
+const BLOCKED_RUNTIME_FILES = new Set(manifest.blockedFiles);
+const BLOCKED_RUNTIME_DIRECTORIES = new Set(manifest.blockedDirectories);
 
 function shouldCopyRuntimeEntry(sourcePath) {
   const relativePath = path.relative(rootDir, sourcePath).split(path.sep).join("/");
@@ -26,7 +19,7 @@ function shouldCopyRuntimeEntry(sourcePath) {
     return true;
   }
 
-  if (relativePath.split("/").includes("__tests__")) {
+  if (relativePath.split("/").some((segment) => BLOCKED_RUNTIME_DIRECTORIES.has(segment))) {
     return false;
   }
 

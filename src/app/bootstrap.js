@@ -1,3 +1,5 @@
+// @ts-check
+
 import { logOperationalError } from "../services/logger.js";
 import { createAppRuntime } from "./createAppRuntime.js";
 
@@ -13,7 +15,11 @@ export async function registerServiceWorker() {
     }
     return registration;
   } catch (error) {
-    logOperationalError("service-worker/register", error);
+    logOperationalError("service-worker/register", error, {
+      context: {
+        script: "./sw.js"
+      }
+    });
     return null;
   }
 }

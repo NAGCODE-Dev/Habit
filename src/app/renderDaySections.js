@@ -1,3 +1,5 @@
+// @ts-check
+
 import { renderCheckboxField } from "../components/CheckboxField.js";
 import { renderSectionCard } from "../components/SectionCard.js";
 import { renderTimeField } from "../components/TimeField.js";

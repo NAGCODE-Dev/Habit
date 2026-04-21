@@ -1,21 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
 const distSrcDir = path.join(projectRoot, "dist", "src");
-const allowedPrefixes = [
-  "App.js",
-  "main.js",
-  "app/",
-  "components/",
-  "services/",
-  "styles/"
-];
+const manifest = JSON.parse(
+  readFileSync(path.join(projectRoot, "scripts", "runtime-manifest.json"), "utf8")
+);
+const allowedPrefixes = manifest.allowedPrefixes;
+const forbiddenFiles = manifest.forbiddenFiles;
+const blockedDirectories = manifest.blockedDirectories;
 
 function listFiles(directory, root = directory) {
   const entries = readdirSync(directory, { withFileTypes: true });
@@ -56,18 +54,10 @@ test("build publica apenas entradas runtime allowlisted", () => {
     );
   }
 
-  const forbiddenFiles = [
-    "services/storage.js",
-    "services/state.js",
-    "services/googleFitService.js",
-    "services/telemetryService.js",
-    "services/healthModelService.js"
-  ];
-
   for (const file of forbiddenFiles) {
     assert.equal(files.includes(file), false, `${file} nao deveria estar no dist`);
   }
 
-  const hasTests = files.some((file) => file.includes("__tests__/"));
+  const hasTests = files.some((file) => blockedDirectories.some((segment) => file.includes(`${segment}/`)));
   assert.equal(hasTests, false);
 });

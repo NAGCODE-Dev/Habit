@@ -1,3 +1,5 @@
+// @ts-check
+
 import { getLocalDateKey } from "./date-utils.js";
 import {
   computeProgress,

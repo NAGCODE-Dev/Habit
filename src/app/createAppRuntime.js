@@ -1,49 +1,67 @@
-import { getLocalDateKey } from "../services/date-utils.js";
-import {
-  buildWaterReminderBody,
-  getDueReminder,
-  notificationPermissionState,
-  notificationsSupported,
-  registerBackgroundReminderSync,
-  showServiceWorkerNotification
-} from "../services/notifications.js";
-import { getLegacyDaySnapshot, markReminderSent, normalizeAppState } from "../services/dayService.js";
-import { refreshAnalyticsCache } from "../services/analyticsService.js";
-import { startDailyResetWatcher } from "../services/reset-scheduler.js";
-import { loadState, saveState } from "../services/storageService.js";
-import { handleChangeAction, handleClickAction, handleInputAction } from "./action-handlers.js";
-import { renderAppShell } from "./renderAppShell.js";
+// @ts-check
 
+import { notificationsSupported } from "../services/notifications.js";
+import { startDailyResetWatcher } from "../services/reset-scheduler.js";
+import { handleChangeAction, handleClickAction, handleInputAction } from "./action-handlers.js";
+import { createReminderController } from "./createReminderController.js";
+import { renderAppShell } from "./renderAppShell.js";
+import { createStateController } from "./createStateController.js";
+import { createToastController } from "./createToastController.js";
+import { createViewController } from "./createViewController.js";
+
+/**
+ * Monta o runtime principal a partir de controladores menores.
+ */
 export function createAppRuntime(rootElement) {
+  if (!rootElement) {
+    throw new Error("App root element not found.");
+  }
+
   const runtime = {
     root: rootElement,
-    state: null,
-    activeView: "today",
-    toasts: [],
-    toastTimers: new Map(),
     beforeInstallEvent: null,
     reminderMode: "foreground-only",
-    reminderInterval: 0,
-    analyticsTimer: 0,
     isRendering: false,
     stopResetWatcher: null
   };
 
-  runtime.getInitialView = () => {
-    const currentUrl = new URL(window.location.href);
-    return currentUrl.searchParams.get("view") === "history" ? "history" : "today";
-  };
-
-  runtime.syncViewToUrl = () => {
-    const currentUrl = new URL(window.location.href);
-    if (runtime.activeView === "history") {
-      currentUrl.searchParams.set("view", "history");
-    } else {
-      currentUrl.searchParams.delete("view");
+  const viewController = createViewController();
+  const toastController = createToastController({
+    onChange: () => {
+      runtime.render();
     }
+  });
+  const stateController = createStateController({
+    onStateChange: () => {
+      runtime.render();
+    }
+  });
+  const reminderController = createReminderController({
+    getState: () => stateController.getState(),
+    commitState: (nextState, options) => stateController.commit(nextState, options),
+    addToast: (message, tone, duration) => toastController.addToast(message, tone, duration),
+    onModeChange: (mode) => {
+      runtime.reminderMode = mode;
+      runtime.render();
+    }
+  });
 
-    window.history.replaceState({}, "", currentUrl);
+  runtime.getState = () => stateController.getState();
+  runtime.getActiveView = () => viewController.getActiveView();
+  runtime.getToasts = () => toastController.getToasts();
+
+  runtime.setActiveView = (view, { syncUrl = true, render = true } = {}) => {
+    viewController.setActiveView(view, { syncUrl });
+    if (render) {
+      runtime.render();
+    }
   };
+
+  runtime.persistState = async (nextState, options) => stateController.commit(nextState, options);
+  runtime.flushPendingState = async () => stateController.flushPendingPersist();
+  runtime.ensureCurrentDay = async () => stateController.ensureCurrentDay();
+  runtime.addToast = (message, tone = "info", duration = 3200) => toastController.addToast(message, tone, duration);
+  runtime.dismissToast = (id) => toastController.dismissToast(id);
 
   runtime.handleBeforeInstallPrompt = (event) => {
     event.preventDefault();
@@ -51,9 +69,18 @@ export function createAppRuntime(rootElement) {
     runtime.render();
   };
 
+  runtime.handlePopState = () => {
+    viewController.syncFromUrl();
+    runtime.render();
+  };
+
+  runtime.handlePageHide = () => {
+    void runtime.flushPendingState();
+  };
+
   runtime.attachGlobalListeners = () => {
     runtime.root.addEventListener("click", (event) => {
-      const actionElement = event.target.closest("[data-action]");
+      const actionElement = event.target?.closest?.("[data-action]");
       if (!actionElement) {
         return;
       }
@@ -78,6 +105,27 @@ export function createAppRuntime(rootElement) {
 
       void handleInputAction(runtime, target);
     });
+
+    window.addEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
+    window.addEventListener("popstate", runtime.handlePopState);
+    window.addEventListener("pagehide", runtime.handlePageHide);
+  };
+
+  runtime.render = () => {
+    const state = stateController.getState();
+    if (!state || runtime.isRendering) {
+      return;
+    }
+
+    runtime.isRendering = true;
+    runtime.root.innerHTML = renderAppShell({
+      state,
+      activeView: viewController.getActiveView(),
+      beforeInstallEvent: runtime.beforeInstallEvent,
+      toasts: toastController.getToasts(),
+      reminderMode: runtime.reminderMode
+    });
+    runtime.isRendering = false;
   };
 
   runtime.configureNotifications = async () => {
@@ -85,148 +133,35 @@ export function createAppRuntime(rootElement) {
       return;
     }
 
-    const result = await registerBackgroundReminderSync();
-    runtime.reminderMode = result.mode;
-    runtime.render();
-  };
-
-  runtime.ensureCurrentDay = async () => {
-    const todayKey = getLocalDateKey();
-    if (runtime.state?.currentDayKey === todayKey && runtime.state?.day?.date === todayKey) {
-      return;
-    }
-
-    runtime.state = normalizeAppState(runtime.state, todayKey);
-    await saveState(runtime.state);
-    runtime.render();
-  };
-
-  runtime.persistState = async (nextState, { render = true } = {}) => {
-    runtime.state = normalizeAppState(nextState);
-    await saveState(runtime.state);
-    if (render) {
-      runtime.render();
-    }
-    runtime.scheduleAnalyticsRefresh();
-  };
-
-  runtime.scheduleAnalyticsRefresh = () => {
-    window.clearTimeout(runtime.analyticsTimer);
-    runtime.analyticsTimer = window.setTimeout(async () => {
-      const nextState = refreshAnalyticsCache(runtime.state);
-      if (nextState === runtime.state) {
-        return;
-      }
-
-      runtime.state = nextState;
-      await saveState(runtime.state);
-      runtime.render();
-    }, 0);
-  };
-
-  runtime.addToast = (message, tone = "info", duration = 3200) => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-    runtime.toasts = [...runtime.toasts, { id, message, tone }];
-    runtime.render();
-
-    const timer = window.setTimeout(() => {
-      runtime.dismissToast(id);
-    }, duration);
-    runtime.toastTimers.set(id, timer);
-  };
-
-  runtime.dismissToast = (id) => {
-    const timer = runtime.toastTimers.get(id);
-    if (timer) {
-      window.clearTimeout(timer);
-      runtime.toastTimers.delete(id);
-    }
-
-    runtime.toasts = runtime.toasts.filter((toast) => toast.id !== id);
-    runtime.render();
-  };
-
-  runtime.startReminderPolling = () => {
-    window.clearInterval(runtime.reminderInterval);
-
-    const runCheck = async () => {
-      const dayView = getLegacyDaySnapshot(runtime.state.day);
-      const dueHour = getDueReminder(dayView, new Date());
-      if (dueHour === null) {
-        return;
-      }
-
-      const nextState = markReminderSent(runtime.state, dueHour);
-      await runtime.persistState(nextState, { render: true });
-
-      const title = `Água ${String(dueHour).padStart(2, "0")}:00`;
-      const body = buildWaterReminderBody(runtime.state.day.water.total);
-
-      if (document.visibilityState === "visible") {
-        runtime.addToast(body);
-      } else if (notificationPermissionState() === "granted") {
-        await showServiceWorkerNotification(
-          title,
-          body,
-          `water-${runtime.state.currentDayKey}-${dueHour}`
-        );
-      }
-    };
-
-    void runCheck();
-    runtime.reminderInterval = window.setInterval(() => {
-      void runCheck();
-    }, 60 * 1000);
-  };
-
-  runtime.render = () => {
-    if (!runtime.state || runtime.isRendering) {
-      return;
-    }
-
-    runtime.isRendering = true;
-    runtime.root.innerHTML = renderAppShell({
-      state: runtime.state,
-      activeView: runtime.activeView,
-      beforeInstallEvent: runtime.beforeInstallEvent,
-      toasts: runtime.toasts,
-      reminderMode: runtime.reminderMode
-    });
-    runtime.isRendering = false;
+    await reminderController.configureNotifications();
   };
 
   runtime.mount = async () => {
-    runtime.activeView = runtime.getInitialView();
-    runtime.state = normalizeAppState(null);
+    viewController.setActiveView(viewController.getInitialView(), { syncUrl: false });
     runtime.attachGlobalListeners();
-    runtime.render();
-
-    const storedState = await loadState();
-    runtime.state = normalizeAppState(storedState ?? runtime.state);
-    await saveState(runtime.state);
-    runtime.render();
-    runtime.scheduleAnalyticsRefresh();
+    await stateController.bootstrap();
 
     runtime.stopResetWatcher = startDailyResetWatcher(() => {
       void runtime.ensureCurrentDay();
     });
     void runtime.configureNotifications();
-    runtime.startReminderPolling();
-    window.addEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
+    reminderController.start();
   };
 
   runtime.destroy = () => {
-    window.clearInterval(runtime.reminderInterval);
-    window.clearTimeout(runtime.analyticsTimer);
+    void runtime.flushPendingState();
+    reminderController.destroy();
+    stateController.destroy();
+    toastController.destroy();
+
     if (runtime.stopResetWatcher) {
       runtime.stopResetWatcher();
       runtime.stopResetWatcher = null;
     }
-    for (const timer of runtime.toastTimers.values()) {
-      window.clearTimeout(timer);
-    }
-    runtime.toastTimers.clear();
+
     window.removeEventListener("beforeinstallprompt", runtime.handleBeforeInstallPrompt);
+    window.removeEventListener("popstate", runtime.handlePopState);
+    window.removeEventListener("pagehide", runtime.handlePageHide);
   };
 
   return runtime;
