@@ -30,9 +30,19 @@ async function readState() {
     return await new Promise((resolve, reject) => {
       const transaction = database.transaction(DB_STORE, "readonly");
       const store = transaction.objectStore(DB_STORE);
-      const request = store.get(APP_STATE_KEY);
-      request.onsuccess = () => resolve(request.result ?? null);
-      request.onerror = () => reject(request.error);
+      const primaryRequest = store.get(APP_STATE_KEY);
+      primaryRequest.onsuccess = () => {
+        const primaryState = primaryRequest.result;
+        if (primaryState) {
+          resolve(primaryState);
+          return;
+        }
+
+        const backupRequest = store.get(APP_STATE_BACKUP_KEY);
+        backupRequest.onsuccess = () => resolve(backupRequest.result ?? null);
+        backupRequest.onerror = () => reject(backupRequest.error);
+      };
+      primaryRequest.onerror = () => reject(primaryRequest.error);
     });
   } catch {
     return null;
@@ -180,12 +190,28 @@ self.addEventListener("message", (event) => {
 
   if (message.type === "SHOW_NOTIFICATION") {
     const payload = message.payload ?? {};
+    const replyPort = event.ports?.[0] ?? null;
     event.waitUntil(
       self.registration.showNotification(payload.title ?? "Rotina", {
         body: payload.body ?? "",
         tag: payload.tag ?? "habit-athlete-notice",
         badge: "./icons/icon-192.png",
         icon: "./icons/icon-192.png"
+      }).then(() => {
+        replyPort?.postMessage({
+          requestId: payload.requestId ?? null,
+          ok: true
+        });
+      }).catch((error) => {
+        replyPort?.postMessage({
+          requestId: payload.requestId ?? null,
+          ok: false,
+          error: {
+            name: String(error?.name ?? ""),
+            message: String(error?.message ?? "")
+          }
+        });
+        throw error;
       })
     );
     return;

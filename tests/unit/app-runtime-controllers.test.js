@@ -297,6 +297,52 @@ test("reminderController não consome reminder quando não há canal de entrega"
   assert.equal(notifications.length, 0);
 });
 
+test("reminderController não consome reminder quando o service worker não confirma entrega", async () => {
+  const timerApi = createTimerApi();
+  const commits = [];
+  const notifications = [];
+  const controller = createReminderController({
+    windowObject: timerApi,
+    documentObject: /** @type {any} */ ({ visibilityState: "hidden" }),
+    getState: () => ({
+      currentDayKey: "2026-04-21",
+      day: { water: { total: 500 } }
+    }),
+    commitState: async (nextState) => {
+      commits.push(nextState);
+    },
+    addToast: () => {
+      throw new Error("toast não deveria ser usado em background");
+    },
+    onModeChange: () => {},
+    getDueReminderImpl: () => 14,
+    markReminderSentImpl: (state, hour) => ({
+      ...state,
+      reminderHour: hour
+    }),
+    getLegacyDaySnapshotImpl: (day) => /** @type {any} */ ({
+      waterTotalMl: day.water.total,
+      reminderSentHours: []
+    }),
+    buildWaterReminderBodyImpl: (total) => `body:${total}`,
+    notificationPermissionStateImpl: () => "granted",
+    notificationsSupportedImpl: () => true,
+    registerBackgroundReminderSyncImpl: async () => ({
+      supported: true,
+      mode: "periodicSync"
+    }),
+    showServiceWorkerNotificationImpl: async (...args) => {
+      notifications.push(args);
+      return false;
+    }
+  });
+
+  const dueHour = await controller.checkNow(new Date("2026-04-21T14:00:00Z"));
+  assert.equal(dueHour, null);
+  assert.equal(commits.length, 0);
+  assert.equal(notifications.length, 1);
+});
+
 test("training-notes usa o caminho único de persistência com debounce e flush por change", async () => {
   const optionsCalls = [];
   const runtime = {

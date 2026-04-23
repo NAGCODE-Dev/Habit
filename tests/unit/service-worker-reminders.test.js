@@ -65,6 +65,18 @@ async function seedState(indexedDB, state) {
   });
 }
 
+async function writeState(indexedDB, key, state) {
+  const database = await openDatabase(indexedDB);
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(DB_STORE, "readwrite");
+    const store = transaction.objectStore(DB_STORE);
+    store.put(state, key);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+
 async function readState(indexedDB, key = APP_STATE_KEY) {
   const database = await openDatabase(indexedDB);
   return new Promise((resolve, reject) => {
@@ -260,5 +272,32 @@ test("service worker persiste reminder enviado no campo aninhado após entrega",
   assert.equal(savedState.day.reminderSentHours, undefined);
 
   const backupState = await readState(harness.indexedDB, APP_STATE_BACKUP_KEY);
+  assert.deepEqual(backupState.day.water.reminderSentHours, [14]);
+});
+
+test("service worker usa app-state-backup quando o primário não existe", async () => {
+  const notifications = [];
+  const harness = createServiceWorkerHarness({
+    showNotificationImpl: async (...args) => {
+      notifications.push(args);
+    }
+  });
+
+  await writeState(harness.indexedDB, APP_STATE_BACKUP_KEY, {
+    currentDayKey: "2026-04-21",
+    day: {
+      water: {
+        total: 500,
+        reminderSentHours: []
+      }
+    }
+  });
+
+  await harness.dispatch("sync", { tag: "water-reminders" });
+
+  assert.equal(notifications.length, 1);
+  const primaryState = await readState(harness.indexedDB, APP_STATE_KEY);
+  const backupState = await readState(harness.indexedDB, APP_STATE_BACKUP_KEY);
+  assert.deepEqual(primaryState.day.water.reminderSentHours, [14]);
   assert.deepEqual(backupState.day.water.reminderSentHours, [14]);
 });

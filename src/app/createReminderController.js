@@ -61,11 +61,14 @@ export function createReminderController({
     if (documentObject.visibilityState === "visible") {
       addToast(body);
     } else if (notificationPermissionStateImpl() === "granted") {
-      await showServiceWorkerNotificationImpl(
+      const delivered = await showServiceWorkerNotificationImpl(
         title,
         body,
         `water-${state.currentDayKey}-${dueHour}`
       );
+      if (!delivered) {
+        return null;
+      }
     } else {
       return null;
     }

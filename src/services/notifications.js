@@ -7,6 +7,8 @@ import {
 import { findDueReminderHour, reminderLabel } from "./date-utils.js";
 import { logOperationalWarning } from "./logger.js";
 
+const NOTIFICATION_ACK_TIMEOUT_MS = 2500;
+
 export function notificationsSupported() {
   return typeof window !== "undefined" && "Notification" in window;
 }
@@ -65,20 +67,58 @@ export function shouldSilenceBackgroundSyncError(error) {
 
 export async function showServiceWorkerNotification(title, body, tag) {
   if (!("serviceWorker" in navigator)) {
-    return;
+    return false;
   }
 
   const registration = await navigator.serviceWorker.ready;
   if (!registration.active) {
-    return;
+    return false;
   }
 
-  registration.active.postMessage({
-    type: "SHOW_NOTIFICATION",
-    payload: {
-      title,
-      body,
-      tag
+  const requestId = `sw-notice-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const channel = new MessageChannel();
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    function finish(result) {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      channel.port1.onmessage = null;
+      channel.port1.close();
+      channel.port2.close();
+      clearTimeout(timeoutId);
+      resolve(result);
+    }
+
+    const timeoutId = setTimeout(() => {
+      finish(false);
+    }, NOTIFICATION_ACK_TIMEOUT_MS);
+
+    channel.port1.onmessage = (event) => {
+      const payload = event.data ?? {};
+      if (payload.requestId !== requestId) {
+        return;
+      }
+
+      finish(payload.ok === true);
+    };
+
+    try {
+      registration.active.postMessage({
+        type: "SHOW_NOTIFICATION",
+        payload: {
+          requestId,
+          title,
+          body,
+          tag
+        }
+      }, [channel.port2]);
+    } catch {
+      finish(false);
     }
   });
 }
